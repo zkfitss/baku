@@ -1,370 +1,700 @@
-const $ = selector => document.querySelector(selector);
+(() => {
+  "use strict";
 
-let allProducts = [];
-let allOrders = [];
+  const API = "/api";
+  let products = [];
+  let orders = [];
+  let settings = {};
+  let editingProductImage = "";
+  let uploadedSettingsImages = {};
 
-async function api(path, options = {}) {
-  const response = await fetch("/api/" + path, {
-    ...options,
-    headers: {
-      ...(options.body instanceof FormData
-        ? {}
-        : { "Content-Type": "application/json" }),
-      ...(options.headers || {})
-    }
-  });
+  const $ = (selector, root = document) => root.querySelector(selector);
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.error || "Request failed");
-  }
-
-  return response.json();
-}
-
-function esc(value) {
-  return String(value ?? "").replace(/[&<>"']/g, char => ({
+  const escapeHTML = value => String(value ?? "").replace(/[&<>"']/g, char => ({
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
     '"': "&quot;",
     "'": "&#39;"
   })[char]);
-}
 
-function showDash() {
-  $("#login").hidden = true;
-  $("#dashboard").hidden = false;
-  loadAll();
-}
+  const money = value =>
+    "PKR " + Number(value || 0).toLocaleString("en-PK");
 
-$("#loginForm").onsubmit = async event => {
-  event.preventDefault();
-
-  try {
-    await api("login", {
-      method: "POST",
-      body: JSON.stringify({
-        password: $("#password").value
-      })
+  async function api(path, options = {}) {
+    const response = await fetch(API + path, {
+      credentials: "same-origin",
+      ...options,
+      headers: {
+        ...(options.body instanceof FormData
+          ? {}
+          : { "Content-Type": "application/json" }),
+        ...(options.headers || {})
+      }
     });
 
-    showDash();
-  } catch (error) {
-    $("#loginError").textContent =
-      "Login failed. Check your admin password.";
+    const result = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      if (response.status === 401) showLogin();
+      throw new Error(result.error || "Something went wrong.");
+    }
+
+    return result;
   }
-};
 
-async function checkSession() {
-  try {
-    await api("me");
-    showDash();
-  } catch (error) {
-    // Admin login is required.
+  function showLogin() {
+    $("#login").hidden = false;
+    $("#dashboard").hidden = true;
   }
-}
 
-checkSession();
+  function showDashboard() {
+    $("#login").hidden = true;
+    $("#dashboard").hidden = false;
+  }
 
-// DASHBOARD TABS
-document.querySelectorAll("[data-tab]").forEach(button => {
-  button.onclick = () => {
-    document.querySelectorAll("[data-tab]").forEach(item =>
-      item.classList.remove("active")
-    );
+  function notify(message, isError = false) {
+    let toast = $("#adminToast");
 
-    button.classList.add("active");
+    if (!toast) {
+      toast = document.createElement("div");
+      toast.id = "adminToast";
+      toast.className = "admin-toast";
+      document.body.appendChild(toast);
+    }
 
-    document.querySelectorAll(".panel").forEach(panel => {
-      panel.hidden = true;
+    toast.textContent = message;
+    toast.classList.toggle("error-toast", isError);
+    toast.classList.add("show");
+
+    clearTimeout(notify.timer);
+    notify.timer = setTimeout(() => toast.classList.remove("show"), 3500);
+  }
+
+  function setLoading(button, loading, text = "Please wait...") {
+    if (!button) return;
+
+    if (loading) {
+      button.dataset.originalText = button.textContent;
+      button.textContent = text;
+      button.disabled = true;
+    } else {
+      button.textContent = button.dataset.originalText || button.textContent;
+      button.disabled = false;
+    }
+  }
+
+  // ------------------------------------
+  // LOGIN AND SESSION
+  // ------------------------------------
+
+  async function checkSession() {
+    try {
+      await api("/me");
+      showDashboard();
+      await loadAdmin();
+    } catch {
+      showLogin();
+    }
+  }
+
+  $("#loginForm")?.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    const button = event.submitter;
+    const password = $("#password").value;
+    const error = $("#loginError");
+
+    error.textContent = "";
+    setLoading(button, true, "SIGNING IN...");
+
+    try {
+      await api("/login", {
+        method: "POST",
+        body: JSON.stringify({ password })
+      });
+
+      $("#password").value = "";
+      showDashboard();
+      await loadAdmin();
+    } catch (err) {
+      error.textContent = err.message;
+    } finally {
+      setLoading(button, false);
+    }
+  });
+
+  $("#logout")?.addEventListener("click", async () => {
+    try {
+      await api("/logout", { method: "POST" });
+    } catch {}
+
+    showLogin();
+  });
+
+  // ------------------------------------
+  // NAVIGATION
+  // ------------------------------------
+
+  document.querySelectorAll("[data-tab]").forEach(button => {
+    button.addEventListener("click", () => {
+      const tab = button.dataset.tab;
+
+      document.querySelectorAll("[data-tab]").forEach(item => {
+        item.classList.toggle("active", item === button);
+      });
+
+      document.querySelectorAll(".admin-main .panel").forEach(panel => {
+        panel.hidden = panel.id !== tab;
+      });
+
+      const titles = {
+        overview: "Overview",
+        products: "Products",
+        orders: "Customer Orders",
+        settings: "Store Customization"
+      };
+
+      $("#pageTitle").textContent = titles[tab] || "ZK FITS";
     });
+  });
 
-    const panel = $("#" + button.dataset.tab);
-    if (panel) panel.hidden = false;
+  // ------------------------------------
+  // LOAD ADMIN DATA
+  // ------------------------------------
 
-    $("#pageTitle").textContent = button.textContent;
-  };
-});
+  async function loadAdmin() {
+    try {
+      const data = await api("/admin");
 
-// LOGOUT
-$("#logout").onclick = async () => {
-  try {
-    await api("logout", { method: "POST" });
-  } finally {
-    location.reload();
+      products = data.products || [];
+      orders = data.orders || [];
+      settings = data.settings || {};
+
+      renderProducts();
+      renderOrders();
+      populateSettings();
+      renderStats();
+    } catch (error) {
+      notify(error.message, true);
+    }
   }
-};
 
-// LOAD DASHBOARD DATA
-async function loadAll() {
-  try {
-    const data = await api("admin");
+  function renderStats() {
+    $("#statProducts").textContent = products.length;
+    $("#statOrders").textContent = orders.length;
 
-    allProducts = data.products || [];
-    allOrders = data.orders || [];
-
-    $("#statProducts").textContent = allProducts.length;
-    $("#statOrders").textContent = allOrders.length;
-
-    const revenue = allOrders
+    const revenue = orders
       .filter(order => order.status !== "Cancelled")
       .reduce((sum, order) => sum + Number(order.total || 0), 0);
 
-    $("#statRevenue").textContent =
-      "PKR " + revenue.toLocaleString("en-PK");
-
-    renderProducts();
-    renderOrders();
-    fillSettings(data.settings || {});
-  } catch (error) {
-    console.error(error);
-    alert("Dashboard data could not be loaded: " + error.message);
+    $("#statRevenue").textContent = money(revenue);
   }
-}
 
-// PRODUCT LIST
-function renderProducts() {
-  $("#productList").innerHTML = allProducts.map(product => `
-    <div class="item-row">
-      <span>
-        <b>${esc(product.title)}</b><br>
-        <small>
-          ${esc(product.category)} ·
-          PKR ${Number(product.sale_price || product.price).toLocaleString("en-PK")}
-          · Stock ${Number(product.stock || 0)}
-        </small>
-      </span>
+  // ------------------------------------
+  // PRODUCT LIST
+  // ------------------------------------
 
-      <span>
-        <button onclick="editProduct(${JSON.stringify(product.id)})">
-          Edit
-        </button>
+  function renderProducts() {
+    const container = $("#productList");
 
-        <button onclick="deleteProduct(${JSON.stringify(product.id)})">
-          Delete
-        </button>
-      </span>
-    </div>
-  `).join("") || "<p>No products yet. Add your first product.</p>";
-}
-
-// ORDERS LIST
-function renderOrders() {
-  $("#orderList").innerHTML = allOrders.map(order => `
-    <div class="order-row">
-      <span>
-        <b>#${esc(order.id)}</b> · ${esc(order.customer_name)}
-        <br>
-        ${esc(order.phone)} · PKR ${Number(order.total || 0).toLocaleString("en-PK")}
-        <br>
-        <small>
-          ${esc(order.payment_method || order.payment)}
-          · ${esc(order.created_at)}
-        </small>
-        <br>
-        <small>${esc(order.address)}</small>
-      </span>
-
-      <span>
-        <select onchange="updateStatus(${JSON.stringify(order.id)}, this.value)">
-          ${["Pending", "Confirmed", "Shipped", "Delivered", "Cancelled"]
-            .map(status => `
-              <option value="${status}"
-                ${order.status === status ? "selected" : ""}>
-                ${status}
-              </option>
-            `).join("")}
-        </select>
-      </span>
-    </div>
-  `).join("") || "<p>No orders yet.</p>";
-}
-
-// PRODUCT EDITOR
-$("#addProduct").onclick = () => openEditor();
-
-$("#cancelProduct").onclick = () => {
-  $("#productEditor").hidden = true;
-};
-
-function openEditor(product = {}) {
-  const form = $("#productForm");
-
-  form.reset();
-
-  form.elements.id.value = product.id || "";
-
-  [
-    "title",
-    "category",
-    "price",
-    "sale_price",
-    "stock",
-    "image",
-    "description"
-  ].forEach(key => {
-    if (form.elements[key]) {
-      form.elements[key].value = product[key] ?? "";
+    if (!products.length) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <h3>No products added yet</h3>
+          <p>Add your first ZK FITS product.</p>
+        </div>
+      `;
+      return;
     }
+
+    container.innerHTML = products.map(product => `
+      <article class="product-admin-card">
+        <img
+          src="${escapeHTML(product.image || "")}"
+          alt="${escapeHTML(product.title || product.name)}"
+          loading="lazy"
+        >
+
+        <div class="product-admin-info">
+          <h3>${escapeHTML(product.title || product.name)}</h3>
+          <p>${escapeHTML(product.category || "General")}</p>
+          <strong>${money(product.sale_price || product.price)}</strong>
+          <small>Stock: ${Number(product.stock || 0)}</small>
+          <small>${product.active ? "Active" : "Hidden"}</small>
+        </div>
+
+        <div class="product-admin-actions">
+          <button type="button" data-edit="${escapeHTML(product.id)}">
+            Edit
+          </button>
+          <button type="button" class="danger" data-delete="${escapeHTML(product.id)}">
+            Delete
+          </button>
+        </div>
+      </article>
+    `).join("");
+  }
+
+  $("#addProduct")?.addEventListener("click", () => {
+    openProductEditor();
   });
 
-  form.elements.sizes.value = Array.isArray(product.sizes)
-    ? product.sizes.join(", ")
-    : product.sizes || "";
+  $("#cancelProduct")?.addEventListener("click", () => {
+    $("#productEditor").hidden = true;
+  });
 
-  form.elements.colors.value = Array.isArray(product.colors)
-    ? product.colors.join(", ")
-    : product.colors || "";
+  function openProductEditor(product = null) {
+    const form = $("#productForm");
 
-  form.elements.featured.checked = !!product.featured;
-  form.elements.active.checked = product.active !== false &&
-    Number(product.active) !== 0;
+    form.reset();
+    editingProductImage = product?.image || "";
 
-  $("#editorTitle").textContent = product.id
-    ? "Edit Product"
-    : "Add Product";
+    form.elements.id.value = product?.id || "";
+    form.elements.title.value = product?.title || product?.name || "";
+    form.elements.category.value = product?.category || "Women";
+    form.elements.price.value = product?.price ?? "";
+    form.elements.sale_price.value = product?.sale_price ?? "";
+    form.elements.sizes.value = (product?.sizes || []).join(", ");
+    form.elements.colors.value = (product?.colors || []).join(", ");
+    form.elements.description.value = product?.description || "";
+    form.elements.image.value = editingProductImage;
 
-  $("#productEditor").hidden = false;
-  $("#productEditor").scrollIntoView({ behavior: "smooth" });
-}
+    form.elements.featured.checked = Boolean(product?.featured);
+    form.elements.active.value = product?.active === 0 ? "0" : "1";
 
-window.editProduct = id => {
-  const product = allProducts.find(item => item.id === id);
-  if (product) openEditor(product);
-};
+    $("#editorTitle").textContent = product ? "Edit Product" : "Add New Product";
 
-// DELETE PRODUCT
-window.deleteProduct = async id => {
-  if (!confirm("Are you sure you want to delete this product?")) return;
+    $("#productImagePreview").innerHTML = editingProductImage
+      ? `<img src="${escapeHTML(editingProductImage)}" alt="Product preview">`
+      : "";
 
-  try {
-    await api("products/" + encodeURIComponent(id), {
-      method: "DELETE"
+    $("#variantRows").innerHTML = "";
+
+    const variants = Array.isArray(product?.variants)
+      ? product.variants
+      : [];
+
+    if (variants.length) {
+      variants.forEach(addVariantRow);
+    } else {
+      addVariantRow();
+    }
+
+    $("#productEditor").hidden = false;
+    $("#productEditor").scrollIntoView({ behavior: "smooth" });
+  }
+
+  // ------------------------------------
+  // VARIANT INVENTORY
+  // ------------------------------------
+
+  function addVariantRow(variant = {}) {
+    const row = document.createElement("div");
+    row.className = "variant-row";
+
+    row.innerHTML = `
+      <input
+        type="text"
+        class="variant-size"
+        placeholder="Size e.g. S"
+        value="${escapeHTML(variant.size || "")}"
+      >
+
+      <input
+        type="text"
+        class="variant-color"
+        placeholder="Colour e.g. Black"
+        value="${escapeHTML(variant.color || "")}"
+      >
+
+      <input
+        type="number"
+        class="variant-stock"
+        min="0"
+        step="1"
+        placeholder="Stock"
+        value="${Math.max(0, Number(variant.stock) || 0)}"
+      >
+
+      <button type="button" class="remove-variant danger" aria-label="Remove variant">
+        ×
+      </button>
+    `;
+
+    row.querySelector(".remove-variant").addEventListener("click", () => {
+      row.remove();
     });
 
-    await loadAll();
-  } catch (error) {
-    alert("Could not delete product: " + error.message);
+    $("#variantRows").appendChild(row);
   }
-};
 
-// UPLOAD IMAGE TO R2
-async function uploadImage(file, folder) {
-  if (!file) return "";
-
-  const form = new FormData();
-  form.append("file", file);
-  form.append("folder", folder);
-
-  const result = await api("upload", {
-    method: "POST",
-    body: form
+  $("#addVariant")?.addEventListener("click", () => {
+    addVariantRow();
   });
 
-  return result.url;
-}
+  function collectVariants() {
+    return [...document.querySelectorAll("#variantRows .variant-row")]
+      .map(row => ({
+        size: row.querySelector(".variant-size").value.trim(),
+        color: row.querySelector(".variant-color").value.trim(),
+        stock: Math.max(
+          0,
+          Math.floor(Number(row.querySelector(".variant-stock").value) || 0)
+        )
+      }))
+      .filter(item => item.size || item.color);
+  }
 
-// SAVE PRODUCT
-$("#productForm").onsubmit = async event => {
-  event.preventDefault();
+  // ------------------------------------
+  // IMAGE UPLOAD
+  // ------------------------------------
 
-  const form = event.target;
-  const formData = new FormData(form);
-  const product = Object.fromEntries(formData);
+  async function uploadImage(file, folder) {
+    if (!file) return null;
 
-  product.featured = form.elements.featured.checked ? 1 : 0;
-  product.active = form.elements.active.checked ? 1 : 0;
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("folder", folder);
 
-  product.sizes = String(product.sizes || "")
-    .split(",").map(value => value.trim()).filter(Boolean);
+    const result = await api("/upload", {
+      method: "POST",
+      body: formData
+    });
 
-  product.colors = String(product.colors || "")
-    .split(",").map(value => value.trim()).filter(Boolean);
+    return result.url;
+  }
 
-  try {
-    const file = $("#productImage")?.files?.[0];
+  $("#productImage")?.addEventListener("change", async event => {
+    const file = event.target.files[0];
+    if (!file) return;
 
-    if (file) {
-      product.image = await uploadImage(file, "products");
+    try {
+      const preview = $("#productImagePreview");
+      preview.textContent = "Uploading image...";
+
+      const url = await uploadImage(file, "products");
+
+      editingProductImage = url;
+      $("#productForm").elements.image.value = url;
+
+      preview.innerHTML = `
+        <img src="${escapeHTML(url)}" alt="Product image preview">
+      `;
+
+      notify("Product image uploaded.");
+    } catch (error) {
+      notify(error.message, true);
+      $("#productImagePreview").textContent = "";
+    }
+  });
+
+  // ------------------------------------
+  // SAVE PRODUCT
+  // ------------------------------------
+
+  $("#productForm")?.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    const form = event.currentTarget;
+    const button = event.submitter;
+
+    const id = form.elements.id.value;
+    const variants = collectVariants();
+
+    const product = {
+      title: form.elements.title.value.trim(),
+      category: form.elements.category.value,
+      price: Number(form.elements.price.value),
+      sale_price: form.elements.sale_price.value === ""
+        ? null
+        : Number(form.elements.sale_price.value),
+      sizes: form.elements.sizes.value.split(",")
+        .map(value => value.trim()).filter(Boolean),
+      colors: form.elements.colors.value.split(",")
+        .map(value => value.trim()).filter(Boolean),
+      description: form.elements.description.value,
+      image: editingProductImage,
+      variants,
+      stock: variants.length
+        ? variants.reduce((sum, item) => sum + item.stock, 0)
+        : 0,
+      featured: form.elements.featured.checked,
+      active: form.elements.active.value === "1"
+    };
+
+    if (!product.image) {
+      notify("Please upload a product image.", true);
+      return;
     }
 
-    const id = product.id;
-    delete product.id;
+    if (!product.title || product.price < 0) {
+      notify("Please enter valid product information.", true);
+      return;
+    }
 
-    await api(
-      "products" + (id ? "/" + encodeURIComponent(id) : ""),
-      {
+    setLoading(button, true, "SAVING PRODUCT...");
+
+    try {
+      await api(id ? "/products/" + encodeURIComponent(id) : "/products", {
         method: id ? "PUT" : "POST",
         body: JSON.stringify(product)
+      });
+
+      $("#productEditor").hidden = true;
+      await loadAdmin();
+
+      notify(id ? "Product updated successfully." : "Product added successfully.");
+    } catch (error) {
+      notify(error.message, true);
+    } finally {
+      setLoading(button, false);
+    }
+  });
+
+  // Product edit and delete actions
+  $("#productList")?.addEventListener("click", async event => {
+    const editButton = event.target.closest("[data-edit]");
+    const deleteButton = event.target.closest("[data-delete]");
+
+    if (editButton) {
+      const product = products.find(item => item.id === editButton.dataset.edit);
+      if (product) openProductEditor(product);
+    }
+
+    if (deleteButton) {
+      const id = deleteButton.dataset.delete;
+
+      if (!confirm("Are you sure you want to delete this product?")) return;
+
+      try {
+        await api("/products/" + encodeURIComponent(id), {
+          method: "DELETE"
+        });
+
+        await loadAdmin();
+        notify("Product deleted.");
+      } catch (error) {
+        notify(error.message, true);
       }
+    }
+  });
+
+  // ------------------------------------
+  // CUSTOMER ORDERS
+  // ------------------------------------
+
+  function renderOrders() {
+    const container = $("#orderList");
+
+    if (!orders.length) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <h3>No customer orders yet</h3>
+          <p>New orders will appear here.</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = orders.map(order => {
+      const items = Array.isArray(order.items) ? order.items : [];
+
+      return `
+        <article class="order-card">
+          <div class="order-heading">
+            <div>
+              <h3>Order #${escapeHTML(order.id)}</h3>
+              <small>${escapeHTML(order.created_at || "")}</small>
+            </div>
+
+            <strong>${money(order.total)}</strong>
+          </div>
+
+          <div class="order-customer">
+            <p><strong>Customer:</strong> ${escapeHTML(order.customer_name)}</p>
+            <p><strong>Phone:</strong> ${escapeHTML(order.phone)}</p>
+            <p><strong>Email:</strong> ${escapeHTML(order.customer_email || "Not available")}</p>
+            <p><strong>Address:</strong> ${escapeHTML(order.address)}</p>
+            <p><strong>Payment:</strong> ${escapeHTML(order.payment_method || order.payment)}</p>
+          </div>
+
+          <div class="order-items">
+            <strong>Products</strong>
+            ${items.map(item => `
+              <div class="order-item">
+                <span>
+                  ${escapeHTML(item.title)}
+                  ${item.size ? " · " + escapeHTML(item.size) : ""}
+                  ${item.color ? " · " + escapeHTML(item.color) : ""}
+                  × ${Number(item.quantity)}
+                </span>
+                <span>${money(Number(item.price) * Number(item.quantity))}</span>
+              </div>
+            `).join("")}
+          </div>
+
+          <div class="order-status-control">
+            <label>
+              Order Status
+              <select data-order-status="${escapeHTML(order.id)}">
+                ${["Pending", "Confirmed", "Shipped", "Delivered", "Cancelled"]
+                  .map(status => `
+                    <option value="${status}" ${order.status === status ? "selected" : ""}>
+                      ${status}
+                    </option>
+                  `).join("")}
+              </select>
+            </label>
+
+            <button type="button" data-save-order="${escapeHTML(order.id)}">
+              UPDATE STATUS
+            </button>
+          </div>
+        </article>
+      `;
+    }).join("");
+  }
+
+  $("#orderList")?.addEventListener("click", async event => {
+    const button = event.target.closest("[data-save-order]");
+    if (!button) return;
+
+    const id = button.dataset.saveOrder;
+    const select = document.querySelector(
+      `[data-order-status="${CSS.escape(id)}"]`
     );
 
-    $("#productEditor").hidden = true;
-    await loadAll();
+    if (!select) return;
 
-    alert("Product saved successfully!");
-  } catch (error) {
-    alert("Could not save product: " + error.message);
-  }
-};
+    setLoading(button, true, "UPDATING...");
 
-// STORE SETTINGS
-function fillSettings(settings) {
-  const form = $("#settingsForm");
-  if (!form) return;
+    try {
+      await api("/orders/" + encodeURIComponent(id), {
+        method: "PUT",
+        body: JSON.stringify({ status: select.value })
+      });
 
-  for (const [key, value] of Object.entries(settings)) {
-    if (form.elements[key]) {
-      form.elements[key].value = value ?? "";
+      await loadAdmin();
+      notify("Order status updated.");
+    } catch (error) {
+      notify(error.message, true);
+    } finally {
+      setLoading(button, false);
     }
-  }
-}
+  });
 
-// SAVE SETTINGS AND OPTIONAL IMAGE UPLOADS
-$("#settingsForm").onsubmit = async event => {
-  event.preventDefault();
+  // ------------------------------------
+  // STORE SETTINGS
+  // ------------------------------------
 
-  const form = event.target;
-  const settings = Object.fromEntries(new FormData(form));
+  const settingFileFields = {
+    logoUpload: {
+      key: "logo",
+      preview: "logoPreview",
+      folder: "branding"
+    },
+    heroUpload: {
+      key: "hero_image",
+      preview: "heroPreview",
+      folder: "banners"
+    },
+    womenUpload: {
+      key: "women_banner",
+      preview: "womenPreview",
+      folder: "banners"
+    },
+    girlsUpload: {
+      key: "girls_banner",
+      preview: "girlsPreview",
+      folder: "banners"
+    }
+  };
 
-  try {
-    const uploadInputs = form.querySelectorAll("[data-upload-setting]");
+  function populateSettings() {
+    const form = $("#settingsForm");
 
-    for (const input of uploadInputs) {
-      const file = input.files?.[0];
-      if (!file) continue;
+    for (const element of form.elements) {
+      if (!element.name) continue;
 
-      const settingName = input.dataset.uploadSetting;
-      const folder = input.dataset.uploadFolder || "store";
+      const value = settings[element.name];
 
-      settings[settingName] = await uploadImage(file, folder);
+      if (value === undefined) continue;
 
-      const urlInput = form.elements[settingName];
-      if (urlInput) urlInput.value = settings[settingName];
+      element.value = value;
     }
 
-    await api("settings", {
-      method: "PUT",
-      body: JSON.stringify(settings)
+    Object.entries(settingFileFields).forEach(([inputId, config]) => {
+      const preview = $("#" + config.preview);
+      const url = settings[config.key];
+
+      preview.innerHTML = url
+        ? `<img src="${escapeHTML(url)}" alt="Uploaded image preview">`
+        : "";
     });
-
-    alert("Store settings saved successfully!");
-  } catch (error) {
-    alert("Could not save settings: " + error.message);
   }
-};
 
-// UPDATE ORDER STATUS
-window.updateStatus = async (id, status) => {
-  try {
-    await api("orders/" + encodeURIComponent(id), {
-      method: "PUT",
-      body: JSON.stringify({ status })
+  Object.entries(settingFileFields).forEach(([inputId, config]) => {
+    $("#" + inputId)?.addEventListener("change", async event => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const preview = $("#" + config.preview);
+      preview.textContent = "Uploading...";
+
+      try {
+        const url = await uploadImage(file, config.folder);
+
+        uploadedSettingsImages[config.key] = url;
+        preview.innerHTML = `
+          <img src="${escapeHTML(url)}" alt="Uploaded image preview">
+        `;
+
+        notify("Website image uploaded.");
+      } catch (error) {
+        preview.textContent = "";
+        notify(error.message, true);
+      }
     });
+  });
 
-    await loadAll();
-  } catch (error) {
-    alert("Could not update order: " + error.message);
-  }
-};
+  $("#settingsForm")?.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    const form = event.currentTarget;
+    const button = event.submitter;
+    const data = {};
+
+    for (const element of form.elements) {
+      if (!element.name || element.type === "file") continue;
+
+      data[element.name] = element.value;
+    }
+
+    Object.assign(data, uploadedSettingsImages);
+
+    setLoading(button, true, "SAVING SETTINGS...");
+
+    try {
+      await api("/settings", {
+        method: "PUT",
+        body: JSON.stringify(data)
+      });
+
+      settings = { ...settings, ...data };
+      uploadedSettingsImages = {};
+
+      notify("Store settings saved successfully.");
+    } catch (error) {
+      notify(error.message, true);
+    } finally {
+      setLoading(button, false);
+    }
+  });
+
+  // ------------------------------------
+  // START
+  // ------------------------------------
+
+  checkSession();
+})();
