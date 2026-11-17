@@ -1,8 +1,430 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ZK FITS Admin</title><link rel="stylesheet" href="/assets/admin.css"></head><body>
-<div id="login" class="login-wrap"><form id="loginForm" class="login-card"><p class="eyebrow">ZK FITS CONTROL ROOM</p><h1>Store Admin</h1><p>Sign in to manage your store.</p><input type="password" id="password" placeholder="Admin password" required><button class="primary">SIGN IN</button><p id="loginError" class="error"></p></form></div>
-<div id="dashboard" hidden><aside class="sidebar"><div class="admin-brand">ZK FITS <small>STORE ADMIN</small></div><button data-tab="overview" class="active">Overview</button><button data-tab="products">Products</button><button data-tab="orders">Orders</button><button data-tab="settings">Store design & settings</button><button id="logout">Log out</button><a href="/">View storefront ↗</a></aside><main class="admin-main"><header class="admin-top"><div><p class="eyebrow">MANAGEMENT</p><h1 id="pageTitle">Overview</h1></div><span class="status">STORE CONTROL</span></header>
-<section id="overview" class="panel"><div class="stats"><article><small>PRODUCTS</small><strong id="statProducts">0</strong></article><article><small>ORDERS</small><strong id="statOrders">0</strong></article><article><small>REVENUE</small><strong id="statRevenue">PKR 0</strong></article></div><h2>Welcome to your store</h2><p>Manage products, orders and the look of your customer-facing website here.</p></section>
-<section id="products" class="panel" hidden><div class="panel-head"><div><h2>Products</h2><p>Add and edit your catalogue.</p></div><button class="primary" id="addProduct">+ Add product</button></div><div id="productList"></div><div id="productEditor" class="editor" hidden><h3 id="editorTitle">Add product</h3><form id="productForm"><input type="hidden" name="id"><div class="form-grid"><label>Product title<input name="title" required></label><label>Category<select name="category"><option>Women</option><option>Girls</option><option>Kids</option></select></label><label>Price (PKR)<input name="price" type="number" min="0" required></label><label>Sale price (optional)<input name="sale_price" type="number" min="0"></label><label>Stock quantity<input name="stock" type="number" min="0" value="0"></label><label>Sizes (comma separated)<input name="sizes" placeholder="S, M, L, XL"></label><label>Colours (comma separated)<input name="colors" placeholder="Black, Blue"></label><label>Image URL<input name="image" placeholder="https://..."></label></div><label>Description<textarea name="description"></textarea></label><label>Upload product image<input type="file" id="productImage" accept="image/*"></label><label class="check"><input name="featured" type="checkbox"> Feature on homepage</label><label class="check"><input name="active" type="checkbox" checked> Active / visible</label><div class="actions"><button class="primary">SAVE PRODUCT</button><button type="button" class="secondary" id="cancelProduct">Cancel</button></div></form></div></section>
-<section id="orders" class="panel" hidden><h2>Orders</h2><div id="orderList"></div></section>
-<section id="settings" class="panel" hidden><h2>Store design & settings</h2><p>Changes here appear on the customer website.</p><form id="settingsForm" class="settings-grid"><label>Store name<input name="store_name"></label><label>Announcement bar<input name="announcement"></label><label>Hero heading<input name="hero_title"></label><label>Hero subheading<input name="hero_subtitle"></label><label>Hero image URL<input name="hero_image" placeholder="https://..."></label><label>Logo image URL<input name="logo" placeholder="https://..."></label><label>Footer text<input name="footer_text"></label><label>Instagram URL<input name="instagram"></label><label>WhatsApp link<input name="whatsapp"></label><label>Facebook URL<input name="facebook"></label><label>TikTok URL<input name="tiktok"></label><label>Shipping fee (PKR)<input name="shipping_fee" type="number"></label><label>Free shipping above (PKR)<input name="free_shipping_threshold" type="number"></label><div class="actions"><button class="primary">SAVE SETTINGS</button></div></form></section>
-</main></div><script src="/assets/admin.js"></script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZK FITS — Store Admin</title>
+  <link rel="stylesheet" href="/assets/admin.css">
+</head>
+<body>
+
+  <!-- ADMIN LOGIN -->
+  <section id="login" class="login-wrap">
+    <div class="login-card">
+      <div class="eyebrow">ZK FITS · ADMINISTRATION</div>
+      <h1>Welcome Back</h1>
+      <p>Sign in to manage your online store.</p>
+
+      <form id="loginForm">
+        <label for="password">Admin Password</label>
+        <input id="password" type="password" placeholder="Enter admin password" required>
+        <button class="primary" type="submit">LOGIN</button>
+        <p id="loginError" class="error"></p>
+      </form>
+    </div>
+  </section>
+
+  <!-- ADMIN DASHBOARD -->
+  <section id="dashboard" hidden>
+
+    <aside class="sidebar">
+      <div class="admin-brand">
+        ZK FITS
+        <small>STORE MANAGEMENT</small>
+      </div>
+
+      <button class="active" data-tab="overview">Overview</button>
+      <button data-tab="products">Products</button>
+      <button data-tab="orders">Orders</button>
+      <button data-tab="settings">Store Settings</button>
+
+      <a href="/" target="_blank">View Website ↗</a>
+      <button id="logout">Logout</button>
+    </aside>
+
+    <main class="admin-main">
+
+      <header class="admin-top">
+        <div>
+          <div class="status">ZK FITS CONTROL PANEL</div>
+          <h1 id="pageTitle">Overview</h1>
+        </div>
+        <span class="status">ONLINE STORE</span>
+      </header>
+
+      <!-- OVERVIEW -->
+      <section id="overview" class="panel">
+        <h2>Store Overview</h2>
+        <p>Manage your products, orders and store settings.</p>
+
+        <div class="stats">
+          <article>
+            <small>TOTAL PRODUCTS</small>
+            <strong id="statProducts">0</strong>
+          </article>
+
+          <article>
+            <small>TOTAL ORDERS</small>
+            <strong id="statOrders">0</strong>
+          </article>
+
+          <article>
+            <small>ORDER REVENUE</small>
+            <strong id="statRevenue">PKR 0</strong>
+          </article>
+        </div>
+      </section>
+
+      <!-- PRODUCTS -->
+      <section id="products" class="panel" hidden>
+        <div class="panel-head">
+          <div>
+            <h2>Products</h2>
+            <p>Add and manage your clothing collection.</p>
+          </div>
+
+          <button class="primary" id="addProduct" type="button">
+            + ADD PRODUCT
+          </button>
+        </div>
+
+        <div id="productList"></div>
+
+        <div id="productEditor" class="editor" hidden>
+          <h2 id="editorTitle">Add Product</h2>
+
+          <form id="productForm">
+            <input type="hidden" name="id">
+
+            <div class="form-grid">
+
+              <label>
+                Product Name
+                <input name="title" type="text" required placeholder="Product name">
+              </label>
+
+              <label>
+                Category
+                <select name="category" required>
+                  <option value="Women">Women</option>
+                  <option value="Girls">Girls</option>
+                  <option value="Kids">Kids</option>
+                </select>
+              </label>
+
+              <label>
+                Regular Price (PKR)
+                <input name="price" type="number" min="0" required>
+              </label>
+
+              <label>
+                Sale Price (PKR)
+                <input name="sale_price" type="number" min="0">
+              </label>
+
+              <label>
+                Stock Quantity
+                <input name="stock" type="number" min="0" value="0">
+              </label>
+
+              <label>
+                Available Sizes
+                <input name="sizes" type="text" placeholder="S, M, L, XL">
+              </label>
+
+              <label>
+                Available Colors
+                <input name="colors" type="text" placeholder="Black, Blue, White">
+              </label>
+
+              <label>
+                Product Image URL
+                <input name="image" type="url" placeholder="Image URL">
+              </label>
+
+              <label>
+                Upload Product Image
+                <input id="productImage" type="file" accept="image/*">
+              </label>
+
+            </div>
+
+            <label>
+              Product Description
+              <textarea name="description" placeholder="Describe your product..."></textarea>
+            </label>
+
+            <label class="check">
+              <input type="checkbox" name="featured">
+              Featured Product
+            </label>
+
+            <label class="check">
+              <input type="checkbox" name="active" checked>
+              Active / Visible on Website
+            </label>
+
+            <div class="actions">
+              <button class="primary" type="submit">SAVE PRODUCT</button>
+              <button class="secondary" id="cancelProduct" type="button">CANCEL</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ORDERS -->
+      <section id="orders" class="panel" hidden>
+        <h2>Customer Orders</h2>
+        <p>View orders and update their delivery status.</p>
+        <div id="orderList"></div>
+      </section>
+
+      <!-- STORE SETTINGS -->
+      <section id="settings" class="panel" hidden>
+        <h2>Store Customization</h2>
+        <p>Manage the appearance and information shown to your customers.</p>
+
+        <form id="settingsForm">
+
+          <h3>Basic Store Information</h3>
+          <div class="settings-grid">
+
+            <label>
+              Store Name
+              <input name="store_name" placeholder="ZK FITS">
+            </label>
+
+            <label>
+              Announcement Bar
+              <input name="announcement" placeholder="Welcome to ZK FITS">
+            </label>
+
+            <label>
+              Hero Heading
+              <input name="hero_title" placeholder="Dress beautifully. Feel confident.">
+            </label>
+
+            <label>
+              Hero Subtitle
+              <input name="hero_subtitle" placeholder="Discover our latest collection">
+            </label>
+
+          </div>
+
+          <h3>Store Logo</h3>
+          <div class="settings-grid">
+            <label>
+              Logo Image URL
+              <input name="logo" type="url" placeholder="Logo URL">
+            </label>
+
+            <label>
+              Upload New Logo
+              <input type="file" accept="image/*"
+                data-upload-setting="logo"
+                data-upload-folder="branding">
+            </label>
+          </div>
+
+          <h3>Main Hero Banner</h3>
+          <div class="settings-grid">
+            <label>
+              Hero Image URL
+              <input name="hero_image" type="url" placeholder="Hero banner URL">
+            </label>
+
+            <label>
+              Upload Hero Banner
+              <input type="file" accept="image/*"
+                data-upload-setting="hero_image"
+                data-upload-folder="banners">
+            </label>
+          </div>
+
+          <h3>Collection Banners</h3>
+          <div class="settings-grid">
+
+            <label>
+              Women Banner Image URL
+              <input name="women_banner" type="url" placeholder="Women banner URL">
+            </label>
+
+            <label>
+              Upload Women Banner
+              <input type="file" accept="image/*"
+                data-upload-setting="women_banner"
+                data-upload-folder="banners">
+            </label>
+
+            <label>
+              Girls Banner Image URL
+              <input name="girls_banner" type="url" placeholder="Girls banner URL">
+            </label>
+
+            <label>
+              Upload Girls Banner
+              <input type="file" accept="image/*"
+                data-upload-setting="girls_banner"
+                data-upload-folder="banners">
+            </label>
+
+          </div>
+
+          <h3>Homepage Editorial Banner</h3>
+          <div class="settings-grid">
+            <label>
+              Editorial Image URL
+              <input name="editorial_image" type="url" placeholder="Editorial image URL">
+            </label>
+
+            <label>
+              Upload Editorial Image
+              <input type="file" accept="image/*"
+                data-upload-setting="editorial_image"
+                data-upload-folder="banners">
+            </label>
+
+            <label>
+              Editorial Heading
+              <input name="editorial_title" placeholder="Our latest collection">
+            </label>
+
+            <label>
+              Editorial Description
+              <input name="editorial_text" placeholder="Explore the collection">
+            </label>
+          </div>
+
+          <h3>Header Menu</h3>
+          <div class="settings-grid">
+
+            <label>
+              Menu Item 1
+              <input name="menu_new_arrivals" placeholder="New Arrivals">
+            </label>
+
+            <label>
+              Menu Item 2
+              <input name="menu_women" placeholder="Women">
+            </label>
+
+            <label>
+              Menu Item 3
+              <input name="menu_girls" placeholder="Girls">
+            </label>
+
+            <label>
+              Menu Item 4
+              <input name="menu_featured" placeholder="Featured">
+            </label>
+
+            <label>
+              Menu Item 5
+              <input name="menu_contact" placeholder="Contact">
+            </label>
+
+          </div>
+
+          <h3>Contact Us</h3>
+          <div class="settings-grid">
+
+            <label>
+              Contact Heading
+              <input name="contact_heading" placeholder="Get in Touch">
+            </label>
+
+            <label>
+              Contact Description
+              <input name="contact_description" placeholder="We are here to help you">
+            </label>
+
+            <label>
+              Phone Number
+              <input name="contact_phone" placeholder="+92...">
+            </label>
+
+            <label>
+              WhatsApp Number or Link
+              <input name="whatsapp" placeholder="https://wa.me/92...">
+            </label>
+
+            <label>
+              Email Address
+              <input name="contact_email" type="email" placeholder="Email address">
+            </label>
+
+            <label>
+              Store Address
+              <input name="contact_address" placeholder="Your business address">
+            </label>
+
+          </div>
+
+          <h3>Social Media Links</h3>
+          <div class="settings-grid">
+
+            <label>
+              Instagram
+              <input name="instagram" type="url" placeholder="Instagram profile URL">
+            </label>
+
+            <label>
+              Facebook
+              <input name="facebook" type="url" placeholder="Facebook page URL">
+            </label>
+
+            <label>
+              TikTok
+              <input name="tiktok" type="url" placeholder="TikTok profile URL">
+            </label>
+
+            <label>
+              WhatsApp
+              <input name="whatsapp_social" placeholder="WhatsApp link">
+            </label>
+
+          </div>
+
+          <h3>Footer</h3>
+          <div class="settings-grid">
+
+            <label>
+              Footer Description
+              <input name="footer_text" placeholder="ZK FITS — Fashion for everyone">
+            </label>
+
+            <label>
+              Footer Copyright Text
+              <input name="footer_copyright" placeholder="All rights reserved">
+            </label>
+
+          </div>
+
+          <h3>Shipping Settings</h3>
+          <div class="settings-grid">
+
+            <label>
+              Shipping Fee (PKR)
+              <input name="shipping_fee" type="number" min="0" value="250">
+            </label>
+
+            <label>
+              Free Shipping Above (PKR)
+              <input name="free_shipping_threshold" type="number" min="0" value="5000">
+            </label>
+
+          </div>
+
+          <div class="actions">
+            <button class="primary" type="submit">SAVE ALL SETTINGS</button>
+          </div>
+
+        </form>
+      </section>
+
+    </main>
+  </section>
+
+  <script src="/assets/admin.js"></script>
+</body>
+</html>
