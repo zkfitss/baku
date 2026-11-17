@@ -1,423 +1,285 @@
-const $ = selector => document.querySelector(selector);
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f8f5f0">
+  <meta name="description" content="Discover beautiful Eastern wear for women and girls at ZK FITS.">
+  <title>ZK FITS | Women & Girls Fashion</title>
+  <link rel="stylesheet" href="/assets/store.css">
+</head>
 
-let products = [];
-let cart = [];
-let settings = {};
+<body>
 
-const money = amount =>
-  "PKR " + Number(amount || 0).toLocaleString("en-PK");
+  <div id="announcement" class="announcement">
+    Welcome to ZK FITS
+  </div>
 
-function esc(value) {
-  return String(value ?? "").replace(/[&<>"']/g, char => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;",
-    '"': "&quot;", "'": "&#39;"
-  })[char]);
-}
+  <header class="site-header">
+    <div class="header-inner">
 
-function safeUrl(value) {
-  const url = String(value || "").trim();
-  return /^(https?:\/\/|\/)/i.test(url) ? url : "";
-}
+      <button id="menuBtn" class="menu-btn" type="button" aria-label="Open menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
 
-async function api(path, options = {}) {
-  const headers = { ...(options.headers || {}) };
-  if (!(options.body instanceof FormData)) {
-    headers["Content-Type"] = "application/json";
-  }
+      <a href="/" class="brand">
+        <img id="logo" src="" alt="ZK FITS" hidden>
+        <span id="brandText">ZK FITS</span>
+      </a>
 
-  const response = await fetch("/api/" + path, {
-    ...options,
-    headers
-  });
+      <nav id="mainNav" class="main-nav">
+        <a href="#new-arrivals">New Arrivals</a>
+        <a href="#women">Women</a>
+        <a href="#girls">Girls</a>
+        <a href="#featured">Featured</a>
+        <a href="#contact">Contact</a>
+      </nav>
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.error || "Request failed");
-  }
-  return response.json();
-}
+      <button id="cartButton" class="cart-button" type="button" aria-label="Shopping bag">
+        BAG <span id="cartCount">0</span>
+      </button>
 
-function productPrice(product) {
-  return Number(product.sale_price || product.price || 0);
-}
+    </div>
+  </header>
 
-function productImage(product) {
-  return safeUrl(product.image) ||
-    "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=700&q=80";
-}
+  <main>
 
-function productCard(product) {
-  const id = esc(product.id);
-  const image = esc(productImage(product));
-  const title = esc(product.title || product.name);
-  const price = productPrice(product);
-  const oldPrice = Number(product.sale_price)
-    ? `<span class="old-price">${money(product.price)}</span>` : "";
-
-  return `
-    <article class="product-card">
-      <div class="product-image" data-details="${id}" role="button" tabindex="0">
-        <img src="${image}" alt="${title}" loading="lazy">
+    <section id="hero" class="hero">
+      <div class="hero-content">
+        <p class="eyebrow">THE NEW COLLECTION</p>
+        <h1 id="heroTitle">Dress beautifully. Feel confident.</h1>
+        <p id="heroSubtitle">Discover elegant styles for every occasion.</p>
+        <a href="#new-arrivals" class="hero-button">EXPLORE COLLECTION</a>
       </div>
-      <div class="product-info">
-        <h3 data-details="${id}" role="button" tabindex="0">${title}</h3>
-        <p>${money(price)} ${oldPrice}</p>
-        <button type="button" data-add="${id}">ADD TO BAG</button>
+    </section>
+
+    <section class="categories-section">
+      <div class="section-heading">
+        <p class="eyebrow">EXPLORE ZK FITS</p>
+        <h2>Shop By Collection</h2>
+        <p>Find your favourite styles.</p>
       </div>
-    </article>`;
-}
 
-// PRODUCT DETAILS
-function createDetailsModal() {
-  if ($("#productDetailsModal")) return;
+      <div class="category-grid">
+        <a href="#women" class="category-tile women-tile">
+          <div class="category-overlay">
+            <span>EXPLORE</span>
+            <h3>Women</h3>
+          </div>
+        </a>
 
-  document.body.insertAdjacentHTML("beforeend", `
-    <div id="productDetailsModal" class="product-details-modal">
-      <div class="product-details-box">
-        <button type="button" id="closeProductDetails" class="details-close">×</button>
-        <div id="productDetailsContent"></div>
+        <a href="#girls" class="category-tile girls-tile">
+          <div class="category-overlay">
+            <span>EXPLORE</span>
+            <h3>Girls</h3>
+          </div>
+        </a>
       </div>
-    </div>`);
+    </section>
 
-  $("#closeProductDetails").onclick = closeProductDetails;
-  $("#productDetailsModal").addEventListener("click", event => {
-    if (event.target.id === "productDetailsModal") closeProductDetails();
-  });
-}
-
-function openProductDetails(id) {
-  const product = products.find(item => String(item.id) === String(id));
-  if (!product) return;
-
-  createDetailsModal();
-
-  const sizes = Array.isArray(product.sizes) ? product.sizes : [];
-  const colors = Array.isArray(product.colors) ? product.colors : [];
-
-  $("#productDetailsContent").innerHTML = `
-    <div class="details-layout">
-      <div class="details-image">
-        <img src="${esc(productImage(product))}" alt="${esc(product.title || product.name)}">
+    <section id="new-arrivals" class="products-section">
+      <div class="section-heading">
+        <p class="eyebrow">JUST ARRIVED</p>
+        <h2>New Arrivals</h2>
+        <p>Fresh looks for your wardrobe.</p>
       </div>
-      <div class="details-info">
-        <p class="details-category">${esc(product.category)}</p>
-        <h2>${esc(product.title || product.name)}</h2>
-        <p class="details-price">${money(productPrice(product))}
-          ${Number(product.sale_price) ? `<span class="old-price">${money(product.price)}</span>` : ""}
-        </p>
-        <p>${esc(product.description || "Discover this beautiful ZK FITS collection piece.")}</p>
-        ${sizes.length ? `<label>Choose Size</label>
-          <select id="detailSize"><option value="">Select size</option>
-          ${sizes.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join("")}</select>` : ""}
-        ${colors.length ? `<label>Choose Color</label>
-          <select id="detailColor"><option value="">Select color</option>
-          ${colors.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join("")}</select>` : ""}
-        <p>Available Stock: ${Number(product.stock || 0)}</p>
-        <button type="button" id="detailAddToCart">ADD TO BAG</button>
+      <div id="newGrid" class="product-grid">
+        <div class="empty">Loading collection...</div>
       </div>
-    </div>`;
+    </section>
 
-  $("#detailAddToCart").onclick = () => {
-    const size = $("#detailSize")?.value || "";
-    const color = $("#detailColor")?.value || "";
+    <section id="women" class="products-section collection-section">
+      <div class="section-heading">
+        <p class="eyebrow">TIMELESS ELEGANCE</p>
+        <h2>Women's Collection</h2>
+        <p>Beautiful outfits for every moment.</p>
+      </div>
+      <div id="womenGrid" class="product-grid">
+        <div class="empty">Loading collection...</div>
+      </div>
+    </section>
 
-    if (sizes.length && !size) return alert("Please select a size.");
-    if (colors.length && !color) return alert("Please select a color.");
+    <section id="girls" class="products-section collection-section">
+      <div class="section-heading">
+        <p class="eyebrow">LITTLE STYLE, BIG CHARM</p>
+        <h2>Girls Collection</h2>
+        <p>Lovely styles for little fashion lovers.</p>
+      </div>
+      <div id="girlsGrid" class="product-grid">
+        <div class="empty">Loading collection...</div>
+      </div>
+    </section>
 
-    if (addToCart(id, size, color)) closeProductDetails();
-  };
-
-  $("#productDetailsModal").classList.add("show");
-}
-
-function closeProductDetails() {
-  $("#productDetailsModal")?.classList.remove("show");
-}
-
-// CART
-function addToCart(id, size = "", color = "") {
-  const product = products.find(item => String(item.id) === String(id));
-
-  if (!product) {
-    alert("Product is not available. Please refresh the page.");
-    return false;
-  }
-
-  const existing = cart.find(item =>
-    String(item.id) === String(id) && item.size === size && item.color === color
-  );
-
-  const quantityInCart = cart
-    .filter(item => String(item.id) === String(id))
-    .reduce((sum, item) => sum + item.quantity, 0);
-
-  if (quantityInCart >= Number(product.stock || 0)) {
-    alert("Sorry, this product is out of stock.");
-    return false;
-  }
-
-  if (existing) {
-    existing.quantity += 1;
-  } else {
-    cart.push({
-      id: product.id,
-      title: product.title || product.name,
-      price: productPrice(product),
-      image: productImage(product),
-      quantity: 1,
-      size,
-      color
-    });
-  }
-
-  renderCart();
-  openCart();
-  return true;
-}
-
-function renderCart() {
-  const count = cart.reduce((sum, item) => sum + item.quantity, 0);
-  if ($("#cartCount")) $("#cartCount").textContent = count;
-  if (!$("#cartItems")) return;
-
-  $("#cartItems").innerHTML = cart.map((item, index) => `
-    <div class="cart-line">
-      <img src="${esc(item.image)}" alt="${esc(item.title)}">
-      <div class="cart-line-info">
-        <b>${esc(item.title)}</b>
-        <p>${money(item.price)}</p>
-        ${item.size ? `<small>Size: ${esc(item.size)}</small>` : ""}
-        ${item.color ? `<small>Color: ${esc(item.color)}</small>` : ""}
-        <div class="quantity-controls">
-          <button type="button" data-minus="${index}">−</button>
-          <span>${item.quantity}</span>
-          <button type="button" data-plus="${index}">+</button>
+    <section class="editorial-section">
+      <div class="editorial-art">
+        <div class="editorial-content">
+          <p class="eyebrow">THE ZK FITS EXPERIENCE</p>
+          <h2 id="editorialTitle">Style That Speaks For You</h2>
+          <p id="editorialText">Discover designs made to make every moment special.</p>
+          <a href="#featured" class="hero-button">DISCOVER MORE</a>
         </div>
-        <button type="button" class="remove-cart" data-remove="${index}">Remove</button>
       </div>
-    </div>`).join("") || "<p>Your bag is empty.</p>";
+    </section>
 
-  const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const threshold = Number(settings.free_shipping_threshold ?? 5000);
-  const fee = Number(settings.shipping_fee ?? 250);
-  const shipping = subtotal >= threshold ? 0 : fee;
+    <section id="featured" class="products-section">
+      <div class="section-heading">
+        <p class="eyebrow">HANDPICKED FOR YOU</p>
+        <h2>Featured Collection</h2>
+        <p>Our selected favourites.</p>
+      </div>
+      <div id="featuredGrid" class="product-grid">
+        <div class="empty">Loading collection...</div>
+      </div>
+    </section>
 
-  if ($("#cartTotal")) $("#cartTotal").textContent = money(subtotal + shipping);
-  if ($("#cartShipping")) $("#cartShipping").textContent = money(shipping);
-}
+    <section class="newsletter-section">
+      <p class="eyebrow">STAY CONNECTED</p>
+      <h2>Be Part of ZK FITS</h2>
+      <p>Follow us for new arrivals, latest collections and updates.</p>
+      <a id="waCta" href="#" target="_blank" rel="noopener" class="hero-button">
+        CHAT WITH US ON WHATSAPP
+      </a>
+    </section>
 
-function changeQuantity(index, amount) {
-  const item = cart[index];
-  if (!item) return;
+    <section id="contact" class="contact-section">
+      <div class="section-heading">
+        <p class="eyebrow">WE ARE HERE FOR YOU</p>
+        <h2 id="contactHeading">Contact Us</h2>
+        <p id="contactDescription">
+          Have a question about your order or our collection? Get in touch.
+        </p>
+      </div>
 
-  const product = products.find(p => String(p.id) === String(item.id));
-  const current = cart.filter(p => String(p.id) === String(item.id))
-    .reduce((sum, p) => sum + p.quantity, 0);
+      <div class="contact-details">
+        <div class="contact-item">
+          <span>PHONE</span>
+          <p id="contactPhone">Contact us for assistance</p>
+        </div>
+        <div class="contact-item">
+          <span>EMAIL</span>
+          <p id="contactEmail">Email us for support</p>
+        </div>
+        <div class="contact-item">
+          <span>ADDRESS</span>
+          <p id="contactAddress">Pakistan</p>
+        </div>
+      </div>
+    </section>
 
-  if (amount > 0 && product && current >= Number(product.stock || 0)) {
-    alert("No more stock available.");
-    return;
-  }
+  </main>
 
-  item.quantity += amount;
-  if (item.quantity <= 0) cart.splice(index, 1);
-  renderCart();
-}
+  <footer id="footer" class="site-footer">
+    <div class="footer-grid">
 
-function openCart() {
-  $("#cart")?.classList.add("open");
-  $("#overlay")?.classList.add("show");
-}
+      <div class="footer-brand">
+        <h2>ZK FITS</h2>
+        <p id="footerText">Fashion for women and girls. Style, comfort and elegance.</p>
+      </div>
 
-function closePanels() {
-  $("#cart")?.classList.remove("open");
-  $("#overlay")?.classList.remove("show");
-  $("#checkoutModal")?.classList.remove("show");
-}
+      <div class="footer-column">
+        <h3>SHOP</h3>
+        <a href="#new-arrivals">New Arrivals</a>
+        <a href="#women">Women</a>
+        <a href="#girls">Girls</a>
+        <a href="#featured">Featured</a>
+      </div>
 
-// CART ITEM BUTTONS
-$("#cartItems")?.addEventListener("click", event => {
-  const plus = event.target.closest("[data-plus]");
-  const minus = event.target.closest("[data-minus]");
-  const remove = event.target.closest("[data-remove]");
+      <div class="footer-column">
+        <h3>HELP</h3>
+        <a href="#contact">Contact Us</a>
+        <a href="#contact">Customer Support</a>
+        <a href="#contact">Order Assistance</a>
+      </div>
 
-  if (plus) changeQuantity(Number(plus.dataset.plus), 1);
-  if (minus) changeQuantity(Number(minus.dataset.minus), -1);
-  if (remove) {
-    cart.splice(Number(remove.dataset.remove), 1);
-    renderCart();
-  }
-});
+      <div class="footer-column">
+        <h3>FOLLOW US</h3>
+        <div id="socials" class="social-links">
+          <a href="#contact">Contact ZK FITS</a>
+        </div>
+      </div>
 
-// PRODUCT CARD BUTTONS
-document.addEventListener("click", event => {
-  const addButton = event.target.closest("[data-add]");
-  const detailsButton = event.target.closest("[data-details]");
+    </div>
 
-  if (addButton) {
-    event.preventDefault();
-    addToCart(addButton.dataset.add);
-  } else if (detailsButton) {
-    openProductDetails(detailsButton.dataset.details);
-  }
-});
+    <div class="footer-bottom">
+      <p>© <span id="year"></span> ZK FITS. All rights reserved.</p>
+      <p>Designed with elegance.</p>
+    </div>
+  </footer>
 
-document.addEventListener("keydown", event => {
-  if ((event.key === "Enter" || event.key === " ") &&
-      event.target.matches("[data-details]")) {
-    event.preventDefault();
-    openProductDetails(event.target.dataset.details);
-  }
-});
+  <div id="overlay" class="overlay"></div>
 
-// HEADER MENU
-$("#menuBtn")?.addEventListener("click", () => {
-  $("#mainNav")?.classList.toggle("open");
-});
+  <aside id="cart" class="cart-drawer">
+    <div class="cart-header">
+      <h2>Your Shopping Bag</h2>
+      <button id="closeCart" type="button" aria-label="Close cart">×</button>
+    </div>
 
-$("#mainNav")?.querySelectorAll("a").forEach(link => {
-  link.addEventListener("click", () => $("#mainNav")?.classList.remove("open"));
-});
+    <div id="cartItems" class="cart-items">
+      <p>Your bag is empty.</p>
+    </div>
 
-// CART BUTTONS
-$("#cartButton")?.addEventListener("click", openCart);
-$("#closeCart")?.addEventListener("click", closePanels);
-$("#overlay")?.addEventListener("click", closePanels);
+    <div class="cart-summary">
+      <div class="cart-total-row">
+        <span>Shipping</span>
+        <strong id="cartShipping">PKR 250</strong>
+      </div>
 
-$("#checkoutBtn")?.addEventListener("click", () => {
-  if (!cart.length) return alert("Your bag is empty.");
-  $("#checkoutModal")?.classList.add("show");
-});
+      <div class="cart-total-row">
+        <span>Total</span>
+        <strong id="cartTotal">PKR 0</strong>
+      </div>
 
-$("#closeCheckout")?.addEventListener("click", () => {
-  $("#checkoutModal")?.classList.remove("show");
-});
+      <button id="checkoutBtn" class="primary checkout-button" type="button">
+        PROCEED TO CHECKOUT
+      </button>
+    </div>
+  </aside>
 
-// CHECKOUT
-$("#checkoutForm")?.addEventListener("submit", async event => {
-  event.preventDefault();
-  if (!cart.length) return alert("Your bag is empty.");
+  <div id="checkoutModal" class="checkout-modal">
+    <div class="checkout-box">
 
-  const form = new FormData(event.target);
-  const payload = Object.fromEntries(form);
-  payload.items = cart.map(item => ({
-    id: item.id, quantity: item.quantity, size: item.size, color: item.color
-  }));
+      <button id="closeCheckout" class="checkout-close" type="button" aria-label="Close checkout">×</button>
 
-  const button = event.target.querySelector('[type="submit"]');
-  if (button) button.disabled = true;
+      <p class="eyebrow">ZK FITS</p>
+      <h2>Complete Your Order</h2>
+      <p>Please provide your delivery details.</p>
 
-  try {
-    const result = await api("orders", {
-      method: "POST",
-      body: JSON.stringify(payload)
-    });
+      <form id="checkoutForm">
 
-    alert("Thank you for shopping with ZK FITS!\nYour order number is: " +
-      result.id + "\nTotal: " + money(result.total));
+        <label>
+          Full Name
+          <input name="customer_name" type="text" placeholder="Your full name" required>
+        </label>
 
-    cart = [];
-    renderCart();
-    closePanels();
-    event.target.reset();
-    await loadStore();
-  } catch (error) {
-    alert("Order could not be placed: " + error.message);
-  } finally {
-    if (button) button.disabled = false;
-  }
-});
+        <label>
+          Phone Number
+          <input name="phone" type="tel" placeholder="03XXXXXXXXX" required>
+        </label>
 
-// SETTINGS
-function applySettings() {
-  if ($("#announcement")) $("#announcement").textContent = settings.announcement || "";
-  if ($("#heroTitle")) $("#heroTitle").textContent = settings.hero_title || "Dress beautifully. Feel confident.";
-  if ($("#heroSubtitle")) $("#heroSubtitle").textContent = settings.hero_subtitle || "";
+        <label>
+          Complete Delivery Address
+          <textarea name="address" placeholder="House, street, city and area" required></textarea>
+        </label>
 
-  if (settings.hero_image && $("#hero")) {
-    $("#hero").style.setProperty("--hero-image", `url("${safeUrl(settings.hero_image)}")`);
-  }
+        <label>
+          Payment Method
+          <select name="payment_method" required>
+            <option value="Cash on Delivery">Cash on Delivery</option>
+            <option value="Bank Transfer">Bank Transfer</option>
+            <option value="Easypaisa">Easypaisa</option>
+            <option value="JazzCash">JazzCash</option>
+          </select>
+        </label>
 
-  if (settings.logo && $("#logo")) {
-    $("#logo").src = safeUrl(settings.logo);
-    $("#logo").hidden = false;
-    if ($("#brandText")) $("#brandText").hidden = true;
-  }
+        <button class="primary checkout-button" type="submit">PLACE ORDER</button>
 
-  if ($("#footerText")) $("#footerText").textContent = settings.footer_text || "";
-  if (settings.whatsapp && $("#waCta")) $("#waCta").href = safeUrl(settings.whatsapp);
+      </form>
+    </div>
+  </div>
 
-  const womenTile = $(".women-tile");
-  const girlsTile = $(".girls-tile");
+  <script src="/assets/store.js"></script>
 
-  if (womenTile && settings.women_banner) womenTile.style.backgroundImage = `url("${safeUrl(settings.women_banner)}")`;
-  if (girlsTile && settings.girls_banner) girlsTile.style.backgroundImage = `url("${safeUrl(settings.girls_banner)}")`;
-
-  const editorial = $(".editorial-art");
-  if (editorial && settings.editorial_image) editorial.style.backgroundImage = `url("${safeUrl(settings.editorial_image)}")`;
-  if ($("#editorialTitle") && settings.editorial_title) $("#editorialTitle").textContent = settings.editorial_title;
-  if ($("#editorialText") && settings.editorial_text) $("#editorialText").textContent = settings.editorial_text;
-
-  const menuLabels = [
-    ["menu_new_arrivals", "New Arrivals"], ["menu_women", "Women"],
-    ["menu_girls", "Girls"], ["menu_featured", "Featured"], ["menu_contact", "Contact"]
-  ];
-  const links = $("#mainNav")?.querySelectorAll("a") || [];
-  menuLabels.forEach(([key, fallback], index) => {
-    if (links[index]) links[index].textContent = settings[key] || fallback;
-  });
-
-  const socials = $("#socials");
-  if (socials) {
-    const items = [
-      ["Instagram", settings.instagram], ["Facebook", settings.facebook],
-      ["TikTok", settings.tiktok], ["WhatsApp", settings.whatsapp_social || settings.whatsapp]
-    ];
-    socials.innerHTML = items.filter(([, url]) => safeUrl(url))
-      .map(([name, url]) => `<a href="${esc(safeUrl(url))}" target="_blank" rel="noopener">${name}</a>`).join("");
-  }
-
-  if ($("#contactPhone")) $("#contactPhone").textContent = settings.contact_phone || "";
-  if ($("#contactEmail")) $("#contactEmail").textContent = settings.contact_email || "";
-  if ($("#contactAddress")) $("#contactAddress").textContent = settings.contact_address || "";
-  if ($("#contactHeading")) $("#contactHeading").textContent = settings.contact_heading || "Contact Us";
-  if ($("#contactDescription")) $("#contactDescription").textContent = settings.contact_description || "";
-}
-
-function renderProducts() {
-  const newGrid = $("#newGrid");
-  const womenGrid = $("#womenGrid");
-  const girlsGrid = $("#girlsGrid");
-  const featuredGrid = $("#featuredGrid");
-
-  if (newGrid) newGrid.innerHTML = products.slice(0, 8).map(productCard).join("") ||
-    '<div class="empty">New arrivals coming soon.</div>';
-
-  if (womenGrid) womenGrid.innerHTML = products.filter(p => p.category === "Women").map(productCard).join("") ||
-    '<div class="empty">Women collection coming soon.</div>';
-
-  if (girlsGrid) girlsGrid.innerHTML = products.filter(p => ["Girls", "Kids"].includes(p.category)).map(productCard).join("") ||
-    '<div class="empty">Girls collection coming soon.</div>';
-
-  if (featuredGrid) featuredGrid.innerHTML = products.filter(p => Number(p.featured) === 1 || p.featured === true).map(productCard).join("") ||
-    '<div class="empty">Featured pieces coming soon.</div>';
-}
-
-async function loadStore() {
-  try {
-    const data = await api("store");
-    products = Array.isArray(data.products) ? data.products : [];
-    settings = data.settings || {};
-    applySettings();
-    renderProducts();
-    renderCart();
-  } catch (error) {
-    console.error("Store loading error:", error);
-  }
-}
-
-// INITIALIZE
-if ($("#year")) $("#year").textContent = new Date().getFullYear();
-
-createDetailsModal();
-loadStore();
+</body>
+</html>
