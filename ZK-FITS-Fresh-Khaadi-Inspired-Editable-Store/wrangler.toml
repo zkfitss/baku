@@ -1,0 +1,13 @@
+name = "zk-fits-store"
+compatibility_date = "2026-11-17"
+pages_build_output_dir = "."
+
+[[d1_databases]]
+binding = "DB"
+database_name = "zkfitss"
+database_id = "3a792c3a-4bb9-42b6-957c-c252803b2611"
+
+# Optional: configure this R2 bucket in Cloudflare and add an R2 binding named PRODUCT_IMAGES.
+# [[r2_buckets]]
+# binding = "PRODUCT_IMAGES"
+# bucket_name = "zkfitss-images"
