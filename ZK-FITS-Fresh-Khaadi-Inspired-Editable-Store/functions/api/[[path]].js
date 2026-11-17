@@ -9,12 +9,13 @@ const json = (data, status = 200) =>
 
 const cookieName = "zkfits_admin";
 
-async function digest(text) {
-  const b = await crypto.subtle.digest(
+async function digest(value) {
+  const result = await crypto.subtle.digest(
     "SHA-256",
-    new TextEncoder().encode(text)
+    new TextEncoder().encode(value)
   );
-  return [...new Uint8Array(b)]
+
+  return Array.from(new Uint8Array(result))
     .map(x => x.toString(16).padStart(2, "0"))
     .join("");
 }
@@ -29,19 +30,21 @@ async function getToken(env) {
 
 function isAdmin(request, token) {
   const cookie = request.headers.get("Cookie") || "";
+
   return cookie.split(";").some(
-    x => x.trim() === cookieName + "=" + token
+    item => item.trim() === cookieName + "=" + token
   );
 }
 
 function cookieHeader(value, maxAge) {
   return {
     "Set-Cookie":
-      ${cookieName}=${value}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${maxAge}
+      cookieName + "=" + value +
+      "; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=" + maxAge
   };
 }
 
-async function body(request) {
+async function readBody(request) {
   try {
     return await request.json();
   } catch {
@@ -51,6 +54,14 @@ async function body(request) {
 
 function makeId() {
   return crypto.randomUUID();
+}
+
+function parseJSON(value) {
+  try {
+    return JSON.parse(value || "[]");
+  } catch {
+    return [];
+  }
 }
 
 export async function onRequest({ request, env }) {
@@ -68,23 +79,26 @@ export async function onRequest({ request, env }) {
   const token = await getToken(env);
 
   try {
-    // ADMIN LOGIN
+    // LOGIN
     if (path[0] === "login" && method === "POST") {
-      const b = await body(request);
+      const data = await readBody(request);
 
-      if (!env.ADMIN_PASSWORD || b.password !== env.ADMIN_PASSWORD) {
+      if (
+        !env.ADMIN_PASSWORD ||
+        data.password !== env.ADMIN_PASSWORD
+      ) {
         return json({ error: "Invalid login" }, 401);
       }
 
       return new Response(JSON.stringify({ ok: true }), {
         headers: {
           "Content-Type": "application/json",
-          ...cookieHeader(token, 60 * 60 * 24 * 7)
+          ...cookieHeader(token, 604800)
         }
       });
     }
 
-    // ADMIN LOGOUT
+    // LOGOUT
     if (path[0] === "logout") {
       return new Response(JSON.stringify({ ok: true }), {
         headers: {
@@ -94,58 +108,67 @@ export async function onRequest({ request, env }) {
       });
     }
 
-    // CHECK ADMIN SESSION
+    // SESSION CHECK
     if (path[0] === "me") {
       return isAdmin(request, token)
         ? json({ ok: true })
         : json({ error: "Unauthorized" }, 401);
     }
 
-    // PUBLIC STORE DATA
+    // PUBLIC STORE
     if (path[0] === "store" && method === "GET") {
-      const p = await env.DB.prepare(
+      const products = await env.DB.prepare(
         "SELECT * FROM products WHERE active = 1 ORDER BY featured DESC, created_at DESC"
       ).all();
 
-      const s = await env.DB.prepare(
+      const settings = await env.DB.prepare(
         "SELECT key, value FROM settings"
       ).all();
 
+      const cleanProducts = (products.results || []).map(p => ({
+        ...p,
+        title: p.title || p.name,
+        sizes: parseJSON(p.sizes),
+        colors: parseJSON(p.colors)
+      }));
+
       return json({
-        products: p.results || [],
+        products: cleanProducts,
         settings: Object.fromEntries(
-          (s.results || []).map(x => [x.key, x.value])
+          (settings.results || []).map(item => [
+            item.key,
+            item.value
+          ])
         )
       });
     }
 
-    // PUBLIC ORDER CREATION
+    // PLACE ORDER
     if (path[0] === "orders" && method === "POST") {
-      const b = await body(request);
+      const data = await readBody(request);
 
       if (
-        !b.customer_name ||
-        !b.phone ||
-        !b.address ||
-        !Array.isArray(b.items) ||
-        !b.items.length
+        !data.customer_name ||
+        !data.phone ||
+        !data.address ||
+        !Array.isArray(data.items) ||
+        !data.items.length
       ) {
         return json({ error: "Missing checkout fields" }, 400);
       }
 
-      const shipping = Number(
-        (await env.DB.prepare(
-          "SELECT value FROM settings WHERE key = 'shipping_fee'"
-        ).first())?.value || 250
-      );
+      const shippingSetting = await env.DB.prepare(
+        "SELECT value FROM settings WHERE key = 'shipping_fee'"
+      ).first();
 
-      const threshold = Number(
-        (await env.DB.prepare(
-          "SELECT value FROM settings WHERE key = 'free_shipping_threshold'"
-        ).first())?.value || 5000
-      );
+      const thresholdSetting = await env.DB.prepare(
+        "SELECT value FROM settings WHERE key = 'free_shipping_threshold'"
+      ).first();
 
-      const subtotal = Number(b.total) || 0;
+      const shipping = Number(shippingSetting?.value || 250);
+      const threshold = Number(thresholdSetting?.value || 5000);
+
+      const subtotal = Number(data.total) || 0;
       const total = subtotal + (subtotal >= threshold ? 0 : shipping);
       const id = makeId();
 
@@ -155,11 +178,11 @@ export async function onRequest({ request, env }) {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
         id,
-        b.customer_name,
-        b.phone,
-        b.address,
-        b.payment_method || "Cash on Delivery",
-        JSON.stringify(b.items),
+        data.customer_name,
+        data.phone,
+        data.address,
+        data.payment_method || "Cash on Delivery",
+        JSON.stringify(data.items),
         total,
         "Pending",
         new Date().toISOString()
@@ -168,32 +191,49 @@ export async function onRequest({ request, env }) {
       return json({ ok: true, id, total });
     }
 
-    // ALL OTHER ROUTES REQUIRE ADMIN
+    // ADMIN AUTHORIZATION
     if (!isAdmin(request, token)) {
       return json({ error: "Unauthorized" }, 401);
     }
 
-    // ADMIN DASHBOARD DATA
+    // ADMIN DASHBOARD
     if (path[0] === "admin" && method === "GET") {
-      const [p, o, s] = await Promise.all([
-        env.DB.prepare("SELECT * FROM products ORDER BY created_at DESC").all(),
-        env.DB.prepare("SELECT * FROM orders ORDER BY created_at DESC").all(),
-        env.DB.prepare("SELECT key, value FROM settings").all()
+      const [products, orders, settings] = await Promise.all([
+        env.DB.prepare(
+          "SELECT * FROM products ORDER BY created_at DESC"
+        ).all(),
+        env.DB.prepare(
+          "SELECT * FROM orders ORDER BY created_at DESC"
+        ).all(),
+        env.DB.prepare(
+          "SELECT key, value FROM settings"
+        ).all()
       ]);
 
       return json({
-        products: p.results || [],
-        orders: o.results || [],
+        products: (products.results || []).map(p => ({
+          ...p,
+          title: p.title || p.name,
+          sizes: parseJSON(p.sizes),
+          colors: parseJSON(p.colors)
+        })),
+        orders: (orders.results || []).map(o => ({
+          ...o,
+          payment_method: o.payment
+        })),
         settings: Object.fromEntries(
-          (s.results || []).map(x => [x.key, x.value])
+          (settings.results || []).map(item => [
+            item.key,
+            item.value
+          ])
         )
       });
     }
 
     // ADD PRODUCT
     if (path[0] === "products" && !path[1] && method === "POST") {
-      const b = await body(request);
-      const title = String(b.title || b.name || "").trim();
+      const data = await readBody(request);
+      const title = String(data.title || data.name || "").trim();
 
       if (!title) {
         return json({ error: "Product title is required" }, 400);
@@ -203,23 +243,23 @@ export async function onRequest({ request, env }) {
 
       await env.DB.prepare(`
         INSERT INTO products
-        (id, name, title, category, description, price, sale_price,
+        (id, name, title, category, price, sale_price, description,
          image, sizes, colors, stock, featured, active, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
         id,
         title,
         title,
-        b.category || "Women",
-        b.description || "",
-        Number(b.price) || 0,
-        b.sale_price ? Number(b.sale_price) : null,
-        b.image || "",
-        JSON.stringify(b.sizes || []),
-        JSON.stringify(b.colors || []),
-        Number(b.stock) || 0,
-        Number(b.featured) || 0,
-        b.active === 0 ? 0 : 1,
+        data.category || "Women",
+        Number(data.price) || 0,
+        data.sale_price ? Number(data.sale_price) : null,
+        data.description || "",
+        data.image || "",
+        JSON.stringify(data.sizes || []),
+        JSON.stringify(data.colors || []),
+        Number(data.stock) || 0,
+        Number(data.featured) || 0,
+        data.active === 0 ? 0 : 1,
         new Date().toISOString()
       ).run();
 
@@ -228,8 +268,8 @@ export async function onRequest({ request, env }) {
 
     // EDIT PRODUCT
     if (path[0] === "products" && path[1] && method === "PUT") {
-      const b = await body(request);
-      const title = String(b.title || b.name || "").trim();
+      const data = await readBody(request);
+      const title = String(data.title || data.name || "").trim();
 
       if (!title) {
         return json({ error: "Product title is required" }, 400);
@@ -237,23 +277,23 @@ export async function onRequest({ request, env }) {
 
       await env.DB.prepare(`
         UPDATE products SET
-        name = ?, title = ?, category = ?, description = ?,
-        price = ?, sale_price = ?, image = ?, sizes = ?,
-        colors = ?, stock = ?, featured = ?, active = ?
+        name = ?, title = ?, category = ?, price = ?, sale_price = ?,
+        description = ?, image = ?, sizes = ?, colors = ?,
+        stock = ?, featured = ?, active = ?
         WHERE id = ?
       `).bind(
         title,
         title,
-        b.category || "Women",
-        b.description || "",
-        Number(b.price) || 0,
-        b.sale_price ? Number(b.sale_price) : null,
-        b.image || "",
-        JSON.stringify(b.sizes || []),
-        JSON.stringify(b.colors || []),
-        Number(b.stock) || 0,
-        Number(b.featured) || 0,
-        b.active === 0 ? 0 : 1,
+        data.category || "Women",
+        Number(data.price) || 0,
+        data.sale_price ? Number(data.sale_price) : null,
+        data.description || "",
+        data.image || "",
+        JSON.stringify(data.sizes || []),
+        JSON.stringify(data.colors || []),
+        Number(data.stock) || 0,
+        Number(data.featured) || 0,
+        data.active === 0 ? 0 : 1,
         path[1]
       ).run();
 
@@ -271,25 +311,38 @@ export async function onRequest({ request, env }) {
 
     // UPDATE ORDER STATUS
     if (path[0] === "orders" && path[1] && method === "PUT") {
-      const b = await body(request);
+      const data = await readBody(request);
+
+      const allowed = [
+        "Pending",
+        "Confirmed",
+        "Shipped",
+        "Delivered",
+        "Cancelled"
+      ];
+
+      if (!allowed.includes(data.status)) {
+        return json({ error: "Invalid order status" }, 400);
+      }
 
       await env.DB.prepare(
         "UPDATE orders SET status = ? WHERE id = ?"
-      ).bind(b.status, path[1]).run();
+      ).bind(data.status, path[1]).run();
 
       return json({ ok: true });
     }
 
-    // SAVE STORE SETTINGS
+    // SAVE SETTINGS
     if (path[0] === "settings" && method === "PUT") {
-      const b = await body(request);
+      const data = await readBody(request);
 
-      for (const [key, value] of Object.entries(b)) {
+      for (const [key, value] of Object.entries(data)) {
         await env.DB.prepare(`
           INSERT INTO settings (key, value)
           VALUES (?, ?)
-          ON CONFLICT(key) DO UPDATE SET value = excluded.value
-        `).bind(key, String(value)).run();
+          ON CONFLICT(key)
+          DO UPDATE SET value = excluded.value
+        `).bind(key, String(value ?? "")).run();
       }
 
       return json({ ok: true });
@@ -298,7 +351,8 @@ export async function onRequest({ request, env }) {
     return json({ error: "Not found" }, 404);
 
   } catch (error) {
-    return json({ error: error.message || "Server error" }, 500);
+    return json({
+      error: error.message || "Server error"
+    }, 500);
   }
-}
 }
