@@ -1,22 +1,337 @@
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ZK FITS | Women & Girls Fashion</title><meta name="description" content="Shop stitched, casual and festive fashion for women and girls at ZK FITS.">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/store.css"></head><body>
-<div class="announcement" id="announcement">New season arrivals are here</div>
-<header class="site-header"><button class="menu-btn" id="menuBtn" aria-label="Open menu">☰</button><a class="brand" href="/"><img id="logo" hidden><span id="brandText">ZK FITS</span></a><nav id="mainNav"><a href="#new">New Arrivals</a><a href="#women">Women</a><a href="#girls">Girls</a><a href="#featured">Featured</a><a href="#footer">Contact</a></nav><a class="bag" href="#cart">Bag <span id="cartCount">0</span></a></header>
-<main>
-<section class="hero" id="hero"><div class="hero-shade"></div><div class="hero-copy"><p class="eyebrow">THE NEW COLLECTION</p><h1 id="heroTitle">Dress beautifully.<br>Feel confident.</h1><p id="heroSubtitle">Everyday elegance for women and girls.</p><a class="button" href="#new">SHOP NOW</a></div></section>
-<section class="intro"><p class="eyebrow">ZK FITS — MADE FOR YOUR MOMENTS</p><h2>Style that feels like you.</h2><p>Discover thoughtfully selected looks for everyday moments and special occasions.</p></section>
-<section class="category-grid"><a class="category-tile women-tile" href="#women"><span>WOMEN</span><small>Explore collection</small></a><a class="category-tile girls-tile" href="#girls"><span>GIRLS</span><small>Little looks, big style</small></a></section>
-<section class="products-section" id="new"><div class="section-heading"><div><p class="eyebrow">JUST LANDED</p><h2>New Arrivals</h2></div><a href="#all">View all ↗</a></div><div class="product-grid" id="newGrid"><div class="empty">Your collection will appear here.</div></div></section>
-<section class="editorial"><div><p class="eyebrow">THE ZK FITS EDIT</p><h2>Made for every version of you.</h2><p>From easy everyday outfits to festive favourites, find pieces that make getting dressed a joy.</p><a class="text-link" href="#all">EXPLORE THE EDIT ↗</a></div><div class="editorial-art"></div></section>
-<section class="products-section" id="women"><div class="section-heading"><div><p class="eyebrow">CURATED FOR HER</p><h2>Women</h2></div></div><div class="product-grid" id="womenGrid"></div></section>
-<section class="products-section" id="girls"><div class="section-heading"><div><p class="eyebrow">LITTLE STYLE</p><h2>Girls</h2></div></div><div class="product-grid" id="girlsGrid"></div></section>
-<section class="products-section" id="featured"><div class="section-heading"><div><p class="eyebrow">HANDPICKED</p><h2>Featured Pieces</h2></div></div><div class="product-grid" id="featuredGrid"></div></section>
-<section class="newsletter"><p class="eyebrow">STAY IN THE LOOP</p><h2>A little note from ZK FITS.</h2><p>Follow us for new drops, styling inspiration and more.</p><a class="button dark" id="waCta" href="#">CHAT WITH US</a></section>
-</main>
-<footer id="footer"><div class="footer-main"><div><a class="brand footer-brand" href="/">ZK FITS</a><p id="footerText">Style made for you.</p><div class="socials" id="socials"></div></div><div><h4>SHOP</h4><a href="#women">Women</a><a href="#girls">Girls</a><a href="#new">New Arrivals</a></div><div><h4>HELP</h4><a href="#footer">Contact Us</a><a href="#footer">Shipping & Returns</a><a href="#footer">Privacy Policy</a></div><div><h4>CONTACT</h4><p>Pakistan · PKR</p><p>Order through WhatsApp or checkout.</p></div></div><div class="copyright">© <span id="year"></span> ZK FITS. All rights reserved.</div></footer>
-<div class="cart-drawer" id="cart"><div class="cart-head"><h3>Your Bag</h3><button id="closeCart">✕</button></div><div id="cartItems"></div><div class="cart-bottom"><strong id="cartTotal">PKR 0</strong><button class="button dark" id="checkoutBtn">CHECKOUT</button></div></div><div class="overlay" id="overlay"></div>
-<div class="modal" id="checkoutModal"><button class="modal-close" id="closeCheckout">✕</button><h2>Checkout</h2><form id="checkoutForm"><input name="customer_name" placeholder="Full name" required><input name="phone" placeholder="Phone number" required><textarea name="address" placeholder="Complete delivery address" required></textarea><select name="payment_method"><option>Cash on Delivery</option><option>Bank Transfer</option><option>Easypaisa / JazzCash</option></select><button class="button dark" type="submit">PLACE ORDER</button></form><p class="small">Bank and wallet payments are manual; payment instructions will be shared after order placement.</p></div>
-<script src="/assets/store.js"></script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f8f5f0">
+  <meta name="description" content="Discover beautiful Eastern wear for women and girls at ZK FITS.">
+  <title>ZK FITS | Women & Girls Fashion</title>
+  <link rel="stylesheet" href="/assets/store.css">
+</head>
+
+<body>
+
+  <!-- ANNOUNCEMENT -->
+  <div id="announcement" class="announcement">
+    Welcome to ZK FITS
+  </div>
+
+  <!-- HEADER -->
+  <header class="site-header">
+    <div class="header-inner">
+
+      <button id="menuBtn" class="menu-btn" type="button"
+        aria-label="Open menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
+      <a href="/" class="brand">
+        <img id="logo" src="" alt="ZK FITS" hidden>
+        <span id="brandText">ZK FITS</span>
+      </a>
+
+      <nav id="mainNav" class="main-nav">
+        <a href="#new-arrivals">New Arrivals</a>
+        <a href="#women">Women</a>
+        <a href="#girls">Girls</a>
+        <a href="#featured">Featured</a>
+        <a href="#contact">Contact</a>
+      </nav>
+
+      <button id="cart" class="cart-button" type="button"
+        aria-label="Shopping bag">
+        BAG <span id="cartCount">0</span>
+      </button>
+
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <main>
+
+    <section id="hero" class="hero">
+      <div class="hero-content">
+        <p class="eyebrow">THE NEW COLLECTION</p>
+        <h1 id="heroTitle">Dress beautifully. Feel confident.</h1>
+        <p id="heroSubtitle">
+          Discover elegant styles for every occasion.
+        </p>
+        <a href="#new-arrivals" class="hero-button">
+          EXPLORE COLLECTION
+        </a>
+      </div>
+    </section>
+
+    <!-- CATEGORY COLLECTIONS -->
+    <section class="categories-section">
+      <div class="section-heading">
+        <p class="eyebrow">EXPLORE ZK FITS</p>
+        <h2>Shop By Collection</h2>
+        <p>Find your favourite styles.</p>
+      </div>
+
+      <div class="category-grid">
+
+        <a href="#women" class="category-tile women-tile">
+          <div class="category-overlay">
+            <span>EXPLORE</span>
+            <h3>Women</h3>
+          </div>
+        </a>
+
+        <a href="#girls" class="category-tile girls-tile">
+          <div class="category-overlay">
+            <span>EXPLORE</span>
+            <h3>Girls</h3>
+          </div>
+        </a>
+
+      </div>
+    </section>
+
+    <!-- NEW ARRIVALS -->
+    <section id="new-arrivals" class="products-section">
+      <div class="section-heading">
+        <p class="eyebrow">JUST ARRIVED</p>
+        <h2>New Arrivals</h2>
+        <p>Fresh looks for your wardrobe.</p>
+      </div>
+
+      <div id="newGrid" class="product-grid">
+        <div class="empty">Loading collection...</div>
+      </div>
+    </section>
+
+    <!-- WOMEN -->
+    <section id="women" class="products-section collection-section">
+      <div class="section-heading">
+        <p class="eyebrow">TIMELESS ELEGANCE</p>
+        <h2>Women's Collection</h2>
+        <p>Beautiful outfits for every moment.</p>
+      </div>
+
+      <div id="womenGrid" class="product-grid">
+        <div class="empty">Loading collection...</div>
+      </div>
+    </section>
+
+    <!-- GIRLS -->
+    <section id="girls" class="products-section collection-section">
+      <div class="section-heading">
+        <p class="eyebrow">LITTLE STYLE, BIG CHARM</p>
+        <h2>Girls Collection</h2>
+        <p>Lovely styles for little fashion lovers.</p>
+      </div>
+
+      <div id="girlsGrid" class="product-grid">
+        <div class="empty">Loading collection...</div>
+      </div>
+    </section>
+
+    <!-- EDITORIAL BANNER -->
+    <section class="editorial-section">
+      <div class="editorial-art">
+        <div class="editorial-content">
+          <p class="eyebrow">THE ZK FITS EXPERIENCE</p>
+          <h2 id="editorialTitle">Style That Speaks For You</h2>
+          <p id="editorialText">
+            Discover designs made to make every moment special.
+          </p>
+          <a href="#featured" class="hero-button">DISCOVER MORE</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- FEATURED -->
+    <section id="featured" class="products-section">
+      <div class="section-heading">
+        <p class="eyebrow">HANDPICKED FOR YOU</p>
+        <h2>Featured Collection</h2>
+        <p>Our selected favourites.</p>
+      </div>
+
+      <div id="featuredGrid" class="product-grid">
+        <div class="empty">Loading collection...</div>
+      </div>
+    </section>
+
+    <!-- NEWSLETTER / WHATSAPP -->
+    <section class="newsletter-section">
+      <p class="eyebrow">STAY CONNECTED</p>
+      <h2>Be Part of ZK FITS</h2>
+      <p>
+        Follow us for new arrivals, latest collections and updates.
+      </p>
+
+      <a id="waCta" href="#" target="_blank" rel="noopener"
+        class="hero-button">
+        CHAT WITH US ON WHATSAPP
+      </a>
+    </section>
+
+    <!-- CONTACT US -->
+    <section id="contact" class="contact-section">
+      <div class="section-heading">
+        <p class="eyebrow">WE ARE HERE FOR YOU</p>
+        <h2 id="contactHeading">Contact Us</h2>
+        <p id="contactDescription">
+          Have a question about your order or our collection? Get in touch.
+        </p>
+      </div>
+
+      <div class="contact-details">
+
+        <div class="contact-item">
+          <span>PHONE</span>
+          <p id="contactPhone">Contact us for assistance</p>
+        </div>
+
+        <div class="contact-item">
+          <span>EMAIL</span>
+          <p id="contactEmail">Email us for support</p>
+        </div>
+
+        <div class="contact-item">
+          <span>ADDRESS</span>
+          <p id="contactAddress">Pakistan</p>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer id="footer" class="site-footer">
+
+    <div class="footer-grid">
+
+      <div class="footer-brand">
+        <h2>ZK FITS</h2>
+        <p id="footerText">
+          Fashion for women and girls. Style, comfort and elegance.
+        </p>
+      </div>
+
+      <div class="footer-column">
+        <h3>SHOP</h3>
+        <a href="#new-arrivals">New Arrivals</a>
+        <a href="#women">Women</a>
+        <a href="#girls">Girls</a>
+        <a href="#featured">Featured</a>
+      </div>
+
+      <div class="footer-column">
+        <h3>HELP</h3>
+        <a href="#contact">Contact Us</a>
+        <a href="#contact">Customer Support</a>
+        <a href="#contact">Order Assistance</a>
+      </div>
+
+      <div class="footer-column">
+        <h3>FOLLOW US</h3>
+        <div id="socials" class="social-links">
+          <a href="#contact">Contact ZK FITS</a>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="footer-bottom">
+      <p>© <span id="year"></span> ZK FITS. All rights reserved.</p>
+      <p>Designed with elegance.</p>
+    </div>
+
+  </footer>
+
+  <!-- CART OVERLAY -->
+  <div id="overlay" class="overlay"></div>
+
+  <!-- CART DRAWER -->
+  <aside id="cart" class="cart-drawer">
+
+    <div class="cart-header">
+      <h2>Your Shopping Bag</h2>
+      <button id="closeCart" type="button" aria-label="Close cart">×</button>
+    </div>
+
+    <div id="cartItems" class="cart-items">
+      <p>Your bag is empty.</p>
+    </div>
+
+    <div class="cart-summary">
+      <div class="cart-total-row">
+        <span>Shipping</span>
+        <strong id="cartShipping">PKR 250</strong>
+      </div>
+
+      <div class="cart-total-row">
+        <span>Total</span>
+        <strong id="cartTotal">PKR 0</strong>
+      </div>
+
+      <button id="checkoutBtn" class="primary checkout-button"
+        type="button">
+        PROCEED TO CHECKOUT
+      </button>
+    </div>
+
+  </aside>
+
+  <!-- CHECKOUT MODAL -->
+  <div id="checkoutModal" class="checkout-modal">
+    <div class="checkout-box">
+
+      <button id="closeCheckout" class="checkout-close"
+        type="button" aria-label="Close checkout">×</button>
+
+      <p class="eyebrow">ZK FITS</p>
+      <h2>Complete Your Order</h2>
+      <p>Please provide your delivery details.</p>
+
+      <form id="checkoutForm">
+
+        <label>
+          Full Name
+          <input name="customer_name" type="text"
+            placeholder="Your full name" required>
+        </label>
+
+        <label>
+          Phone Number
+          <input name="phone" type="tel"
+            placeholder="03XXXXXXXXX" required>
+        </label>
+
+        <label>
+          Complete Delivery Address
+          <textarea name="address"
+            placeholder="House, street, city and area"
+            required></textarea>
+        </label>
+
+        <label>
+          Payment Method
+          <select name="payment_method" required>
+            <option value="Cash on Delivery">Cash on Delivery</option>
+            <option value="Bank Transfer">Bank Transfer</option>
+            <option value="Easypaisa">Easypaisa</option>
+            <option value="JazzCash">JazzCash</option>
+          </select>
+        </label>
+
+        <button class="primary checkout-button" type="submit">
+          PLACE ORDER
+        </button>
+
+      </form>
+
+    </div>
+  </div>
+
+  <script src="/assets/store.js"></script>
+
+</body>
+</html>
