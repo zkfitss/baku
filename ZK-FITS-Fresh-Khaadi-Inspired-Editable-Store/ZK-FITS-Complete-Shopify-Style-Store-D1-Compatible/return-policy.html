@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#ffffff">
+  <title>Return Policy | ZK FITS</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      color: #252525;
+      background: #faf9f7;
+    }
+
+    header {
+      background: #fff;
+      border-bottom: 1px solid #eee;
+      padding: 20px;
+      text-align: center;
+    }
+
+    header a {
+      color: #222;
+      text-decoration: none;
+      font-size: 25px;
+      font-weight: 700;
+      letter-spacing: 2px;
+    }
+
+    nav {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 24px;
+      padding: 16px;
+      background: #fff;
+    }
+
+    nav a {
+      color: #333;
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    main {
+      width: min(850px, 92%);
+      margin: 55px auto;
+      padding: 40px;
+      background: #fff;
+      border: 1px solid #eee;
+      border-radius: 8px;
+      min-height: 300px;
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: clamp(27px, 5vw, 38px);
+      text-align: center;
+    }
+
+    .intro {
+      color: #777;
+      text-align: center;
+      margin-bottom: 35px;
+    }
+
+    #policyContent {
+      white-space: pre-line;
+      line-height: 1.9;
+      font-size: 16px;
+      overflow-wrap: anywhere;
+    }
+
+    footer {
+      padding: 30px 20px;
+      background: #222;
+      color: #fff;
+      text-align: center;
+      font-size: 13px;
+    }
+
+    footer a {
+      color: #fff;
+      text-decoration: none;
+      margin: 0 10px;
+    }
+
+    @media (max-width: 600px) {
+      main {
+        margin: 25px auto;
+        padding: 25px 18px;
+      }
+
+      nav { gap: 15px; }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <a href="/">ZK FITS</a>
+  </header>
+
+  <nav aria-label="Page navigation">
+    <a href="/">Home</a>
+    <a href="/#women">Women</a>
+    <a href="/#girls">Girls</a>
+    <a href="/#collection">Collections</a>
+    <a href="/#contact">Contact</a>
+  </nav>
+
+  <main>
+    <h1 id="policyTitle">Return Policy</h1>
+    <p class="intro">ZK FITS — Customer Information</p>
+    <div id="policyContent">Loading return policy...</div>
+  </main>
+
+  <footer>
+    <p>
+      <a href="/">Home</a>
+      <a href="/#contact">Contact Us</a>
+      <a href="/return-policy.html">Return Policy</a>
+    </p>
+    <p>© <span id="year"></span> ZK FITS. All rights reserved.</p>
+  </footer>
+
+  <script>
+    (() => {
+      "use strict";
+
+      document.getElementById("year").textContent =
+        new Date().getFullYear();
+
+      function parseSettings(raw) {
+        if (Array.isArray(raw)) {
+          return Object.fromEntries(
+            raw.map(item => [item.key, item.value])
+          );
+        }
+
+        if (typeof raw === "string") {
+          try {
+            return parseSettings(JSON.parse(raw));
+          } catch {
+            return {};
+          }
+        }
+
+        return raw && typeof raw === "object" ? raw : {};
+      }
+
+      async function loadPolicy() {
+        const title = document.getElementById("policyTitle");
+        const content = document.getElementById("policyContent");
+
+        try {
+          const response = await fetch("/api/store", {
+            headers: { "Accept": "application/json" }
+          });
+
+          if (!response.ok) {
+            throw new Error("Unable to load policy");
+          }
+
+          const data = await response.json();
+          const settings = parseSettings(data.settings);
+
+          title.textContent =
+            settings.return_policy_title || "Return Policy";
+
+          content.textContent =
+            settings.return_policy ||
+            settings.returns_policy ||
+            settings.returnPolicy ||
+            "Our return policy has not been added yet. Please contact ZK FITS for assistance.";
+
+          document.title = title.textContent + " | ZK FITS";
+
+        } catch (error) {
+          console.error(error);
+
+          content.textContent =
+            "Return policy could not be loaded. Please try again later or contact ZK FITS.";
+        }
+      }
+
+      loadPolicy();
+    })();
+  </script>
+</body>
+</html>
