@@ -1,9 +1,9 @@
 /* =====================================================
    ZK FITS — PRODUCT DETAIL PAGE
-   Works with:
-   /api/store
-   localStorage: zkfits_cart
-   Existing store.js and product.html
+   Product details, variants, gallery, cart and reviews
+   Reviews API:
+   GET  /api/reviews?product_id=ID
+   POST /api/reviews
    ===================================================== */
 
 (() => {
@@ -11,7 +11,6 @@
 
   const API = "/api";
   const CART_KEY = "zkfits_cart";
-
   const $ = (id) => document.getElementById(id);
 
   const state = {
@@ -33,7 +32,7 @@
     "Rs. " + Number(value || 0).toLocaleString("en-PK");
 
   const escapeHTML = (value) =>
-    String(value ?? "").replace(/[&<>"']/g, (char) => ({
+    String(value ?? "").replace(/[&<>"']/g, char => ({
       "&": "&amp;",
       "<": "&lt;",
       ">": "&gt;",
@@ -59,18 +58,12 @@
 
   function getProductId() {
     const params = new URLSearchParams(location.search);
-
-    return (
-      params.get("id") ||
-      params.get("product") ||
-      ""
-    ).trim();
+    return (params.get("id") || params.get("product") || "").trim();
   }
 
   function getProductPrice(product) {
     const sale = Number(product.sale_price || 0);
     const regular = Number(product.price || 0);
-
     return sale > 0 && sale < regular ? sale : regular;
   }
 
@@ -91,16 +84,14 @@
   function normalizeList(value) {
     const parsed = parseJSON(value, []);
 
-    if (Array.isArray(parsed)) {
-      return parsed.map(item => {
-        if (typeof item === "object" && item !== null) {
-          return String(item.name || item.value || item.label || "");
-        }
-        return String(item);
-      }).filter(Boolean);
-    }
+    if (!Array.isArray(parsed)) return [];
 
-    return [];
+    return parsed.map(item => {
+      if (typeof item === "object" && item !== null) {
+        return String(item.name || item.value || item.label || "");
+      }
+      return String(item);
+    }).filter(Boolean);
   }
 
   function normalizeVariants(value) {
@@ -164,13 +155,13 @@
 
   function showToast(message) {
     const toast = $("storeToast");
-
     if (!toast) return;
 
     toast.textContent = message;
     toast.classList.add("show");
 
     window.clearTimeout(showToast.timer);
+
     showToast.timer = window.setTimeout(() => {
       toast.classList.remove("show");
     }, 2800);
@@ -183,9 +174,11 @@
   }
 
   function updateDocumentDetails(product) {
-    document.title = `${product.title || product.name || "Product"} | ZK FITS`;
+    document.title =
+      `${product.title || product.name || "Product"} | ZK FITS`;
 
-    const description = product.description || "Discover your outfit at ZK FITS.";
+    const description =
+      product.description || "Discover your outfit at ZK FITS.";
 
     const meta = document.querySelector('meta[name="description"]');
 
@@ -193,8 +186,10 @@
       meta.setAttribute("content", description.slice(0, 155));
     }
 
-    $("breadcrumbProduct").textContent =
-      product.title || product.name || "Product";
+    if ($("breadcrumbProduct")) {
+      $("breadcrumbProduct").textContent =
+        product.title || product.name || "Product";
+    }
   }
 
   function renderImages() {
@@ -232,8 +227,13 @@
       });
     });
 
-    $("galleryPrev").disabled = state.images.length < 2;
-    $("galleryNext").disabled = state.images.length < 2;
+    if ($("galleryPrev")) {
+      $("galleryPrev").disabled = state.images.length < 2;
+    }
+
+    if ($("galleryNext")) {
+      $("galleryNext").disabled = state.images.length < 2;
+    }
   }
 
   function moveGallery(direction) {
@@ -248,14 +248,16 @@
 
   function renderPrice() {
     const product = state.product;
-    if (!product) return;
+    if (!product || !$("productPrice")) return;
 
     const regular = Number(product.price || 0);
     const sale = Number(product.sale_price || 0);
     const hasSale = sale > 0 && sale < regular;
 
     $("productPrice").innerHTML = `
-      <strong class="current-price">${money(hasSale ? sale : regular)}</strong>
+      <strong class="current-price">
+        ${money(hasSale ? sale : regular)}
+      </strong>
       ${hasSale ? `
         <del class="old-price">${money(regular)}</del>
         <span class="sale-discount">
@@ -264,7 +266,9 @@
       ` : ""}
     `;
 
-    $("productSaleBadge").hidden = !hasSale;
+    if ($("productSaleBadge")) {
+      $("productSaleBadge").hidden = !hasSale;
+    }
   }
 
   function renderVariants() {
@@ -356,26 +360,35 @@
     const stock = getCurrentStock();
     state.stock = stock;
 
-    const hasRequiredSize = !state.sizes.length || !!state.selectedSize;
-    const hasRequiredColor = !state.colors.length || !!state.selectedColor;
+    const hasRequiredSize =
+      !state.sizes.length || !!state.selectedSize;
+
+    const hasRequiredColor =
+      !state.colors.length || !!state.selectedColor;
+
     const hasSelection = hasRequiredSize && hasRequiredColor;
 
     const availability = $("productAvailability");
     const addButton = $("addToCartButton");
     const buyButton = $("buyNowButton");
 
-    if (!hasSelection) {
-      availability.textContent = "Please select your size and colour.";
-      availability.className = "product-availability";
-    } else if (stock <= 0) {
-      availability.textContent = "Currently out of stock";
-      availability.className = "product-availability out-of-stock";
-    } else {
-      availability.textContent = stock <= 5
-        ? `Only ${stock} left in stock`
-        : "In stock";
+    if (availability) {
+      if (!hasSelection) {
+        availability.textContent =
+          "Please select your size and colour.";
+        availability.className = "product-availability";
+      } else if (stock <= 0) {
+        availability.textContent = "Currently out of stock";
+        availability.className =
+          "product-availability out-of-stock";
+      } else {
+        availability.textContent = stock <= 5
+          ? `Only ${stock} left in stock`
+          : "In stock";
 
-      availability.className = "product-availability in-stock";
+        availability.className =
+          "product-availability in-stock";
+      }
     }
 
     const disabled = !hasSelection || stock <= 0;
@@ -400,17 +413,23 @@
     const stock = getCurrentStock();
     const parsed = Math.floor(Number(value) || 1);
 
-    state.quantity = Math.max(1, Math.min(parsed, Math.max(1, stock)));
+    state.quantity = Math.max(
+      1,
+      Math.min(parsed, Math.max(1, stock))
+    );
 
-    $("productQuantity").value = String(state.quantity);
+    if ($("productQuantity")) {
+      $("productQuantity").value = String(state.quantity);
+    }
   }
 
   function renderTrustAndPolicy() {
-    const policy = state.settings.return_policy ||
+    const policy =
+      state.settings.return_policy ||
       state.settings.returns_policy ||
       state.settings.returnPolicy;
 
-    if (policy) {
+    if (policy && $("returnPolicyContent")) {
       $("returnPolicyContent").textContent = String(policy);
     }
   }
@@ -462,26 +481,36 @@
 
   function renderProduct(product) {
     state.product = product;
-
     state.images = getProductImages(product);
     state.imageIndex = 0;
-
     state.sizes = normalizeList(product.sizes);
     state.colors = normalizeList(product.colors);
     state.variants = normalizeVariants(product.variants);
-
     state.selectedSize = "";
     state.selectedColor = "";
     state.quantity = 1;
 
     updateDocumentDetails(product);
 
-    $("productCategory").textContent = product.category || "";
-    $("productTitle").textContent = product.title || product.name || "Product";
-    $("productDescription").textContent = product.description || "";
+    if ($("productCategory")) {
+      $("productCategory").textContent = product.category || "";
+    }
 
-    $("fullProductDetails").textContent =
-      product.description || "Please contact us for further product details.";
+    if ($("productTitle")) {
+      $("productTitle").textContent =
+        product.title || product.name || "Product";
+    }
+
+    if ($("productDescription")) {
+      $("productDescription").textContent =
+        product.description || "";
+    }
+
+    if ($("fullProductDetails")) {
+      $("fullProductDetails").textContent =
+        product.description ||
+        "Please contact us for further product details.";
+    }
 
     renderPrice();
     renderImages();
@@ -489,9 +518,9 @@
     renderTrustAndPolicy();
     renderRelatedProducts();
 
-    $("productLoading").hidden = true;
-    $("productError").hidden = true;
-    $("productContent").hidden = false;
+    if ($("productLoading")) $("productLoading").hidden = true;
+    if ($("productError")) $("productError").hidden = true;
+    if ($("productContent")) $("productContent").hidden = false;
 
     updateAvailability();
     loadReviews();
@@ -517,14 +546,21 @@
 
       const data = await response.json();
 
-      state.products = Array.isArray(data.products) ? data.products : [];
+      state.products = Array.isArray(data.products)
+        ? data.products
+        : [];
+
       state.settings = data.settings || {};
 
       const product = state.products.find(item =>
         String(item.id) === String(id)
       );
 
-      if (!product || product.active === false || Number(product.active) === 0) {
+      if (
+        !product ||
+        product.active === false ||
+        Number(product.active) === 0
+      ) {
         showProductError();
         return;
       }
@@ -537,9 +573,16 @@
     }
   }
 
+  /* =========================
+     CART
+     ========================= */
+
   function readCart() {
     try {
-      const cart = JSON.parse(localStorage.getItem(CART_KEY) || "[]");
+      const cart = JSON.parse(
+        localStorage.getItem(CART_KEY) || "[]"
+      );
+
       return Array.isArray(cart) ? cart : [];
     } catch {
       return [];
@@ -561,8 +604,10 @@
       return false;
     }
 
-    if ((state.sizes.length && !state.selectedSize) ||
-        (state.colors.length && !state.selectedColor)) {
+    if (
+      (state.sizes.length && !state.selectedSize) ||
+      (state.colors.length && !state.selectedColor)
+    ) {
       showToast("Please select size and colour first.");
       return false;
     }
@@ -573,7 +618,6 @@
     }
 
     const cart = readCart();
-
     const size = state.selectedSize;
     const color = state.selectedColor;
 
@@ -584,7 +628,9 @@
     );
 
     if (existing) {
-      const oldQuantity = Number(existing.qty ?? existing.quantity ?? 0);
+      const oldQuantity =
+        Number(existing.qty ?? existing.quantity ?? 0);
+
       const newQuantity = oldQuantity + state.quantity;
 
       if (newQuantity > stock) {
@@ -594,6 +640,7 @@
 
       existing.qty = newQuantity;
       existing.quantity = newQuantity;
+
     } else {
       const price = getProductPrice(product);
 
@@ -613,34 +660,268 @@
     }
 
     saveCart(cart);
-
     window.dispatchEvent(new Event("zkfits:cart-updated"));
 
     showToast("Product added to your shopping bag.");
-
     return true;
   }
 
   function openExistingCart() {
-    const cartButton = $("cartButton");
-
-    if (cartButton) {
-      cartButton.click();
-    }
+    $("cartButton")?.click();
   }
 
   function buyNow() {
     if (!addProductToCart()) return;
 
-    // Open the existing cart and checkout controls from store.js.
     openExistingCart();
+    $("checkoutButton")?.click();
+  }
 
-    const checkoutButton = $("checkoutButton");
+  /* =========================
+     PRODUCT REVIEWS
+     ========================= */
 
-    if (checkoutButton) {
-      checkoutButton.click();
+  function renderStars(rating) {
+    const value = Math.max(
+      0,
+      Math.min(5, Math.round(Number(rating) || 0))
+    );
+
+    return "★".repeat(value) + "☆".repeat(5 - value);
+  }
+
+  function formatReviewDate(value) {
+    if (!value) return "";
+
+    const date = new Date(
+      String(value).includes("Z") ? value : value.replace(" ", "T") + "Z"
+    );
+
+    if (Number.isNaN(date.getTime())) return "";
+
+    return date.toLocaleDateString("en-PK", {
+      day: "numeric",
+      month: "short",
+      year: "numeric"
+    });
+  }
+
+  function renderReviews(reviews) {
+    const list = $("reviewsList");
+    if (!list) return;
+
+    const validReviews = Array.isArray(reviews)
+      ? reviews.filter(review =>
+          Number(review.rating) >= 1 &&
+          Number(review.rating) <= 5
+        )
+      : [];
+
+    const total = validReviews.length;
+
+    const average = total
+      ? validReviews.reduce(
+          (sum, review) => sum + Number(review.rating), 0
+        ) / total
+      : 0;
+
+    const averageText = total ? average.toFixed(1) : "—";
+
+    if ($("reviewsAverage")) {
+      $("reviewsAverage").textContent = averageText;
+    }
+
+    if ($("reviewsStars")) {
+      $("reviewsStars").textContent = renderStars(average);
+    }
+
+    if ($("reviewsTotal")) {
+      $("reviewsTotal").textContent =
+        total === 1 ? "1 customer review" : `${total} customer reviews`;
+    }
+
+    if ($("ratingStars")) {
+      $("ratingStars").textContent = renderStars(average);
+    }
+
+    if ($("ratingCount")) {
+      $("ratingCount").textContent =
+        total ? `${total} reviews` : "No reviews yet";
+    }
+
+    if ($("reviewsSummary")) {
+      $("reviewsSummary").textContent = total
+        ? `${averageText} out of 5 based on ${total} reviews`
+        : "Be the first to review this product.";
+    }
+
+    if (!total) {
+      list.innerHTML = `
+        <p class="reviews-empty">
+          No approved reviews yet. Be the first to share your experience!
+        </p>
+      `;
+      return;
+    }
+
+    list.innerHTML = validReviews.map(review => `
+      <article class="customer-review">
+        <div class="customer-review-heading">
+          <strong>${escapeHTML(review.customer_name || "Customer")}</strong>
+          <span class="review-stars" aria-label="${Number(review.rating)} out of 5 stars">
+            ${renderStars(review.rating)}
+          </span>
+        </div>
+        <p class="customer-review-text">
+          ${escapeHTML(review.review || "")}
+        </p>
+        <time class="customer-review-date">
+          ${escapeHTML(formatReviewDate(review.created_at))}
+        </time>
+      </article>
+    `).join("");
+  }
+
+  async function loadReviews() {
+    const product = state.product;
+    if (!product) return;
+
+    const list = $("reviewsList");
+
+    if (list) {
+      list.innerHTML = `
+        <p class="reviews-empty">Loading customer reviews...</p>
+      `;
+    }
+
+    try {
+      const response = await fetch(
+        `${API}/reviews?product_id=${encodeURIComponent(product.id)}`,
+        {
+          method: "GET",
+          headers: { "Accept": "application/json" }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Could not load reviews.");
+      }
+
+      const data = await response.json();
+
+      renderReviews(
+        Array.isArray(data) ? data : (data.reviews || [])
+      );
+
+    } catch (error) {
+      console.error("ZK FITS reviews loading error:", error);
+
+      if (list) {
+        list.innerHTML = `
+          <p class="reviews-empty">
+            Reviews could not be loaded right now. Please try again later.
+          </p>
+        `;
+      }
     }
   }
+
+  function setupReviewForm() {
+    const form = $("reviewForm");
+    if (!form) return;
+
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+
+      if (!state.product) return;
+
+      const name = $("reviewName")?.value.trim() || "";
+      const email = $("reviewEmail")?.value.trim() || "";
+      const rating = Number($("reviewRating")?.value || 0);
+      const review = $("reviewText")?.value.trim() || "";
+
+      const message = $("reviewFormMessage");
+      const submitButton = $("submitReviewButton");
+
+      if (!name || !email || !review || rating < 1 || rating > 5) {
+        setMessage(
+          message,
+          "Please complete all fields and select a star rating.",
+          true
+        );
+        return;
+      }
+
+      if (review.length < 5) {
+        setMessage(
+          message,
+          "Please write a little more about your experience.",
+          true
+        );
+        return;
+      }
+
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = "Submitting...";
+      }
+
+      setMessage(message, "");
+
+      try {
+        const response = await fetch(`${API}/reviews`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          body: JSON.stringify({
+            product_id: state.product.id,
+            customer_name: name,
+            customer_email: email,
+            rating,
+            review
+          })
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(
+            data.error || data.message || "Review submission failed."
+          );
+        }
+
+        form.reset();
+
+        setMessage(
+          message,
+          "Thank you! Your review has been submitted and is awaiting approval."
+        );
+
+        showToast("Thank you for your review!");
+
+      } catch (error) {
+        console.error("ZK FITS review submission error:", error);
+
+        setMessage(
+          message,
+          error.message || "Unable to submit your review. Please try again.",
+          true
+        );
+
+      } finally {
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.textContent = "Submit Review";
+        }
+      }
+    });
+  }
+
+  /* =========================
+     PAGE CONTROLS
+     ========================= */
 
   function setupQuantityControls() {
     $("quantityMinus")?.addEventListener("click", () => {
@@ -675,8 +956,13 @@
   }
 
   function setupGallery() {
-    $("galleryPrev")?.addEventListener("click", () => moveGallery(-1));
-    $("galleryNext")?.addEventListener("click", () => moveGallery(1));
+    $("galleryPrev")?.addEventListener("click", () => {
+      moveGallery(-1);
+    });
+
+    $("galleryNext")?.addEventListener("click", () => {
+      moveGallery(1);
+    });
   }
 
   function setupShareButton() {
@@ -686,51 +972,28 @@
 
       const shareData = {
         title: product.title || product.name || "ZK FITS",
-        text: product.description || "Discover this product at ZK FITS.",
+        text: product.description ||
+          "Discover this product at ZK FITS.",
         url: location.href
       };
 
       try {
         if (navigator.share) {
           await navigator.share(shareData);
+
         } else if (navigator.clipboard?.writeText) {
           await navigator.clipboard.writeText(location.href);
           showToast("Product link copied.");
+
         } else {
           showToast("Please copy the product link from your browser.");
         }
+
       } catch (error) {
         if (error.name !== "AbortError") {
           console.error("Share error:", error);
         }
       }
-    });
-  }
-
-  function loadReviews() {
-    // Reviews API has not yet been implemented in the current backend.
-    // Never display fabricated reviews or ratings.
-    $("ratingStars").textContent = "☆☆☆☆☆";
-    $("ratingCount").textContent = "Reviews coming soon";
-    $("reviewsAverage").textContent = "—";
-    $("reviewsStars").textContent = "☆☆☆☆☆";
-    $("reviewsTotal").textContent = "Reviews are not available yet.";
-    $("reviewsList").innerHTML =
-      '<p class="reviews-empty">Customer reviews will appear here once the review system is enabled.</p>';
-  }
-
-  function setupReviewForm() {
-    const form = $("reviewForm");
-    if (!form) return;
-
-    form.addEventListener("submit", event => {
-      event.preventDefault();
-
-      setMessage(
-        $("reviewFormMessage"),
-        "Review submission is not enabled yet. The review backend and admin moderation system must be added first.",
-        true
-      );
     });
   }
 
@@ -741,8 +1004,6 @@
 
     if (!toggle || !nav) return;
 
-    // The existing store.js owns the menu behaviour.
-    // This fallback only closes the menu when the overlay is clicked.
     overlay?.addEventListener("click", () => {
       toggle.click();
     });
