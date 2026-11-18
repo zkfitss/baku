@@ -237,7 +237,7 @@ img {
 .menu-overlay {
   position: fixed;
   inset: 0;
-  z-index: 45;
+  z-index: 35;
   background: rgba(0,0,0,.4);
   opacity: 0;
   visibility: hidden;
@@ -1733,3 +1733,8 @@ button:disabled {
 .hero-slider-controls button { opacity:0; color:transparent; background:transparent; border:0; width:48px; height:64px; }
 .hero-slider-controls button:focus-visible { opacity:1; outline:2px solid currentColor; }
 @media(max-width:700px) { .hero-slider-controls button { width:48px; height:64px; } }
+
+/* Keep the navigation panel and its links above the dimming overlay. */
+.site-header { position: relative; z-index: 40; }
+.menu-overlay { z-index: 35; }
+@media (max-width: 760px) { .main-nav { z-index: 50; } }

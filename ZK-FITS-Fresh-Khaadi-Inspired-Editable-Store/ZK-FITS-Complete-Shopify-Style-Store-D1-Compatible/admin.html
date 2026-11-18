@@ -149,9 +149,9 @@
             </label>
 
             <label class="product-images-upload">
-              Product Images (up to 10)
+              Product Images (multiple)
               <input id="productImages" type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple>
-              <small>Upload all product photos here. The first image is the main photo. You can also add separate photos to each size/colour combination below.</small>
+              <small>Upload as many product photos as needed. The first image is the main photo. Colour-specific photos are optional.</small>
             </label>
 
             <label>
@@ -173,7 +173,7 @@
             <h3>Size & Colour Inventory</h3>
 
             <p>
-              Generate the size/colour combinations once. Enter the stock for each one and upload matching colour photos. Customers choose a size first, then an available colour.
+              Generate the size/colour combinations once. Enter the stock for each one and upload matching colour photos. Customers choose a size first, then a colour only if you add one.
             </p>
 
             <div class="variant-heading">
@@ -185,13 +185,13 @@
 
             <div id="variantRows"></div>
 
-            <p class="field-help">Each size has its own stock for every colour. Upload the photos for that exact size/colour combination; those photos appear when the customer selects it.</p>
+            <p class="field-help">Each size has its own stock. Colour is optional. You may upload colour-specific photos, but this is not required.</p>
 
             <div class="variant-actions">
               <button type="button" class="secondary" id="generateVariants">GENERATE ALL SIZE × COLOUR COMBINATIONS</button>
               <button type="button" class="secondary" id="addVariant">+ ADD SIZE / COLOUR VARIANT</button>
             </div>
-            <p class="field-help">Enter any sizes and colours you offer, then generate combinations. A size or colour is purchasable only when its combination has stock greater than zero.</p>
+            <p class="field-help">Enter sizes and optionally colours, then generate inventory rows. A size/colour combination is purchasable when its stock is greater than zero.</p>
 
             <input type="hidden" name="variants" id="variantsData">
           </div>
@@ -265,6 +265,14 @@
             Hero Subtitle
             <input name="hero_subtitle" placeholder="New collection available now">
           </label>
+
+          <label>Hero Button Text (leave empty to hide)
+            <input name="hero_button_text" placeholder="EXPLORE COLLECTION">
+          </label>
+          <label>Hero Button Link
+            <input name="hero_button_link" placeholder="#collection">
+          </label>
+          <p class="full-width">Plain banner: leave Hero Kicker, Heading, Subtitle and Button Text empty. The banner image will show without text or button on desktop and mobile.</p>
 
           <h3 class="full-width">Website Images</h3>
 

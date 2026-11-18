@@ -12,6 +12,8 @@
   let editingProductImages = [];
   let uploadedSettingsImages = {};
   let reviewFilter = "pending";
+  let knownOrderIds = null;
+  let orderPollTimer = null;
 
   const $ = (selector, root = document) =>
     root.querySelector(selector);
@@ -198,7 +200,17 @@
       const data = await api("/admin");
 
       products = data.products || [];
-      orders = data.orders || [];
+      const freshOrders = data.orders || [];
+      if (knownOrderIds !== null) {
+        const known = new Set(knownOrderIds);
+        const newOrders = freshOrders.filter(order => !known.has(String(order.id)));
+        if (newOrders.length) {
+          notify(`${newOrders.length} new customer order${newOrders.length > 1 ? "s" : ""} received.`);
+          showNewOrderPopup(newOrders[0]);
+        }
+      }
+      knownOrderIds = freshOrders.map(order => String(order.id));
+      orders = freshOrders;
       settings = data.settings || {};
 
       renderProducts();
@@ -213,6 +225,20 @@
     } catch (error) {
       notify(error.message, true);
     }
+  }
+
+  function showNewOrderPopup(order) {
+    let popup = document.getElementById("newOrderPopup");
+    if (!popup) {
+      popup = document.createElement("div");
+      popup.id = "newOrderPopup";
+      popup.setAttribute("role", "status");
+      popup.style.cssText = "position:fixed;right:18px;top:18px;z-index:99999;max-width:340px;background:#292521;color:#fff;padding:18px 20px;border-radius:12px;box-shadow:0 12px 40px #0003;font:14px/1.5 Arial,sans-serif";
+      document.body.appendChild(popup);
+    }
+    popup.innerHTML = `<strong>New ZK FITS order!</strong><p style="margin:8px 0">Order #${escapeHTML(order.id)} · ${escapeHTML(order.customer_name || "Customer")} · ${money(order.total)}</p><button type="button" id="viewNewOrder" style="background:#fff;color:#292521;border:0;border-radius:6px;padding:8px 12px;cursor:pointer">View orders</button> <button type="button" id="dismissNewOrder" style="background:transparent;color:#fff;border:1px solid #aaa;border-radius:6px;padding:8px 12px;cursor:pointer">Dismiss</button>`;
+    document.getElementById("viewNewOrder")?.addEventListener("click", () => { openTab("orders"); popup.remove(); });
+    document.getElementById("dismissNewOrder")?.addEventListener("click", () => popup.remove());
   }
 
   function renderStats() {
@@ -307,7 +333,7 @@
     form.reset();
 
     editingProductImage = product?.image || "";
-    editingProductImages = [...(product?.image ? [product.image] : []), ...(Array.isArray(product?.images) ? product.images : [])].filter(Boolean).slice(0, 10);
+    editingProductImages = [...(product?.image ? [product.image] : []), ...(Array.isArray(product?.images) ? product.images : [])].filter(Boolean);
 
     form.elements.id.value = product?.id || "";
     form.elements.title.value =
@@ -403,7 +429,7 @@
           const url = await uploadImage(file, "product-variants");
           if (url) uploaded.push(url);
         }
-        row.dataset.images = JSON.stringify([...current, ...uploaded].slice(0, 10));
+        row.dataset.images = JSON.stringify([...current, ...uploaded]);
         drawPreview();
         notify("Colour images uploaded.");
       } catch (error) {
@@ -426,20 +452,23 @@
     const form = $("#productForm");
     const sizes = splitSizeList(form.elements.sizes.value);
     const colors = splitColorList(form.elements.colors.value);
-    if (!sizes.length || !colors.length) {
-      notify("Enter product sizes and at least one colour first.", true);
+    if (!sizes.length) {
+      notify("Enter at least one product size first. Colour is optional.", true);
       return;
     }
     const existing = collectVariants();
     const byKey = new Map(existing.map(v => [`${v.size.toLowerCase()}|${v.color.toLowerCase()}`, v]));
     const combinations = [];
-    for (const size of sizes) for (const color of colors) {
-      const key = `${size.toLowerCase()}|${color.toLowerCase()}`;
-      combinations.push(byKey.get(key) || { size, color, stock: 0, images: [] });
+    for (const size of sizes) {
+      const coloursForSize = colors.length ? colors : [""];
+      for (const color of coloursForSize) {
+        const key = `${size.toLowerCase()}|${color.toLowerCase()}`;
+        combinations.push(byKey.get(key) || { size, color, stock: 0, images: [] });
+      }
     }
     $("#variantRows").innerHTML = "";
     combinations.forEach(addVariantRow);
-    notify(`${combinations.length} size-colour combinations generated. Enter stock for each one.`);
+    notify(`${combinations.length} inventory rows generated. Colour is optional; enter stock for each size/colour row.`);
   });
 
   function splitSizeList(value) {
@@ -512,16 +541,13 @@
     const input = event.target;
     input.disabled = true;
     try {
-      const remaining = Math.max(0, 10 - editingProductImages.length);
-      if (!remaining) { notify("A product can have up to 10 images total.", true); return; }
-      for (const file of files.slice(0, remaining)) {
+      for (const file of files) {
         const url = await uploadImage(file, "products");
         if (url) editingProductImages.push(url);
       }
       editingProductImage = editingProductImages[0] || "";
       renderProductImagesPreview();
-      if (files.length > remaining) notify("Only 10 product images are allowed.", true);
-      else notify("Product images uploaded.");
+      notify("Product images uploaded.");
     } catch (error) {
       notify(error.message, true);
     } finally {
@@ -568,7 +594,7 @@
 
       description: form.elements.description.value,
       image: editingProductImages[0] || "",
-      images: editingProductImages.slice(1, 10),
+      images: editingProductImages.slice(1),
       variants,
 
       stock: variants.length
@@ -584,13 +610,13 @@
       return;
     }
 
-    if (product.sizes.length && product.colors.length && !variants.length) {
-      notify("Generate size and colour combinations, then enter stock for each combination.", true);
+    if (product.sizes.length && !variants.length) {
+      notify("Generate size inventory rows and enter stock for each size.", true);
       return;
     }
 
-    if (variants.some(v => !v.size || !v.color)) {
-      notify("Every inventory row must have both a size and a colour.", true);
+    if (variants.some(v => !v.size)) {
+      notify("Every inventory row must have a size. Colour is optional.", true);
       return;
     }
 
@@ -765,14 +791,18 @@
     setLoading(button, true, "UPDATING...");
 
     try {
-      await api("/orders/" + encodeURIComponent(id), {
+      const result = await api("/orders/" + encodeURIComponent(id), {
         method: "PUT",
         body: JSON.stringify({ status: select.value })
       });
 
       await loadAdmin();
 
-      notify("Order status updated.");
+      if (select.value === "Confirmed") {
+        notify(result.customer_email_sent ? "Order confirmed. Customer confirmation email sent." : "Order confirmed, but customer email was not sent: " + (result.email_message || "Check Resend configuration."), !result.customer_email_sent);
+      } else {
+        notify("Order status updated.");
+      }
 
     } catch (error) {
       notify(error.message, true);
@@ -1417,5 +1447,10 @@
   setupNavigation();
   installReviewsTab();
   checkSession();
+  if (!orderPollTimer) {
+    orderPollTimer = setInterval(() => {
+      if (!document.hidden && $("#dashboard") && !$("#dashboard").hidden) loadAdmin();
+    }, 20000);
+  }
 
 })();

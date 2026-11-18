@@ -1190,6 +1190,26 @@
     $("galleryNext")?.addEventListener("click", () => {
       moveGallery(1);
     });
+
+    const gallery = $(".product-main-image");
+    if (gallery && !gallery.dataset.swipeBound) {
+      gallery.dataset.swipeBound = "1";
+      let startX = 0, startY = 0, tracking = false;
+      gallery.addEventListener("touchstart", event => {
+        if (!event.touches || event.touches.length !== 1) return;
+        startX = event.touches[0].clientX;
+        startY = event.touches[0].clientY;
+        tracking = true;
+      }, { passive: true });
+      gallery.addEventListener("touchend", event => {
+        if (!tracking || !event.changedTouches?.length) return;
+        tracking = false;
+        const dx = event.changedTouches[0].clientX - startX;
+        const dy = event.changedTouches[0].clientY - startY;
+        if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.2) moveGallery(dx < 0 ? 1 : -1);
+      }, { passive: true });
+      gallery.addEventListener("touchcancel", () => { tracking = false; }, { passive: true });
+    }
   }
 
   /* =========================================

@@ -90,7 +90,7 @@ function normalizeVariants(input) {
       color: String(item.color || item.colour || "").trim(),
       stock: Math.max(0, Math.floor(Number(item.stock) || 0)),
       images: Array.isArray(item.images)
-        ? item.images.filter(url => typeof url === "string" && url.trim()).slice(0, 10)
+        ? item.images.filter(url => typeof url === "string" && url.trim())
         : []
     }))
     .filter(item => item.size || item.color);
@@ -236,8 +236,8 @@ async function sendOrderEmails(env, order) {
   const results = await Promise.all([
     sendEmail(env, {
       to: order.customer_email,
-      subject: "ZK FITS - Order Confirmation #" + order.id,
-      html: customerHtml,
+      subject: "ZK FITS - Order received #" + order.id,
+      html: customerHtml.replace("Your order has been received successfully.", "We have received your order. It is currently awaiting confirmation by our team."),
       from: sender
     }),
     sendEmail(env, {
@@ -971,7 +971,7 @@ export async function onRequest({ request, env }) {
       }
 
       const existing = await env.DB.prepare(
-        "SELECT id FROM orders WHERE id = ?"
+        "SELECT * FROM orders WHERE id = ?"
       ).bind(path[1]).first();
 
       if (!existing) {
@@ -982,7 +982,16 @@ export async function onRequest({ request, env }) {
         UPDATE orders SET status = ? WHERE id = ?
       `).bind(data.status, path[1]).run();
 
-      return json({ ok: true });
+      let customerEmail = { sent: false, reason: "No confirmation email required for this status." };
+      if (data.status === "Confirmed" && existing.status !== "Confirmed") {
+        const items = parseJSON(existing.items, []);
+        const rows = items.map(item => `<tr><td style="padding:10px;border-bottom:1px solid #eee">${escapeHTML(item.title || item.name || "Product")} ${item.size ? `<br>Size: ${escapeHTML(item.size)}` : ""} ${item.color ? `<br>Colour: ${escapeHTML(item.color)}` : ""}</td><td style="padding:10px;text-align:center">${Number(item.quantity || item.qty || 1)}</td><td style="padding:10px;text-align:right">PKR ${(Number(item.price || 0) * Number(item.quantity || item.qty || 1)).toLocaleString("en-PK")}</td></tr>`).join("");
+        const html = `<div style="font-family:Arial,sans-serif;color:#292521;max-width:640px;margin:auto"><div style="background:#292521;color:white;padding:22px;text-align:center"><h1>ZK FITS</h1></div><div style="padding:24px"><h2>Your order is confirmed!</h2><p>Dear ${escapeHTML(existing.customer_name)}, your order #${escapeHTML(existing.id)} has been confirmed by ZK FITS.</p><table style="width:100%;border-collapse:collapse"><tbody>${rows}</tbody></table><h3 style="text-align:right">Total: PKR ${Number(existing.total || 0).toLocaleString("en-PK")}</h3><p>We will update you when your order is shipped.</p></div></div>`;
+        const settings = await getSettings(env);
+        customerEmail = await sendEmail(env, { to: existing.customer_email, subject: `ZK FITS - Your order #${existing.id} is confirmed`, html, from: env.EMAIL_FROM || settings.email_from || undefined, replyTo: env.ADMIN_EMAIL || settings.admin_email || DEFAULT_ADMIN_EMAIL });
+      }
+
+      return json({ ok: true, customer_email_sent: customerEmail.sent, email_message: customerEmail.reason || "Confirmation email processed." });
     }
 
     // SAVE STORE SETTINGS

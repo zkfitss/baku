@@ -257,19 +257,20 @@
       setting("announcement", "Welcome to ZK FITS — Discover your style")
     );
 
-    setText("#heroKicker", setting("hero_kicker", "THE NEW COLLECTION"));
-    setText(
-      "#heroTitle",
-      setting("hero_title", "Elegance in Every Stitch")
-    );
-
-    setText(
-      "#heroSubtitle",
-      setting(
-        "hero_subtitle",
-        "Discover timeless Pakistani fashion, thoughtfully designed for you."
-      )
-    );
+    const heroKicker = $("#heroKicker");
+    const heroTitle = $("#heroTitle");
+    const heroSubtitle = $("#heroSubtitle");
+    const heroButton = $("#heroButton");
+    const heroContent = $(".hero-content");
+    const kickerText = String(setting("hero_kicker", "")).trim();
+    const titleText = String(setting("hero_title", "")).trim();
+    const subtitleText = String(setting("hero_subtitle", "")).trim();
+    const buttonText = String(setting("hero_button_text", "")).trim();
+    if (heroKicker) { heroKicker.textContent = kickerText; heroKicker.hidden = !kickerText; }
+    if (heroTitle) { heroTitle.textContent = titleText; heroTitle.hidden = !titleText; }
+    if (heroSubtitle) { heroSubtitle.textContent = subtitleText; heroSubtitle.hidden = !subtitleText; }
+    if (heroButton) { heroButton.textContent = buttonText; heroButton.href = setting("hero_button_link", "#collection"); heroButton.hidden = !buttonText; }
+    if (heroContent) heroContent.hidden = !(kickerText || titleText || subtitleText || buttonText);
 
     setImage("heroImage", setting("hero_image"));
     setImage("womenBanner", setting("women_banner"));
