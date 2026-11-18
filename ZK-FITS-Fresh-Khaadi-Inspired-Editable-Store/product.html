@@ -2,39 +2,49 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#f8f6f2">
-  <meta name="description" content="Discover your outfit at ZK FITS.">
   <title>Product | ZK FITS</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="/assets/store.css">
   <link rel="stylesheet" href="/assets/product.css">
+
+  <script src="/assets/store.js" defer></script>
+  <script src="/assets/product.js" defer></script>
 </head>
 
 <body class="product-page">
-  <div id="announcementBar" class="announcement-bar">
-    <p>WELCOME TO ZK FITS</p>
+
+  <!-- ANNOUNCEMENT BAR -->
+  <div class="announcement-bar" id="announcementBar">
+    <p id="announcementText">Welcome to ZK FITS</p>
   </div>
 
-  <header class="site-header">
+  <!-- HEADER -->
+  <header class="site-header" id="siteHeader">
     <div class="header-inner">
+
       <button class="menu-toggle" id="menuToggle" type="button"
         aria-label="Open menu" aria-expanded="false">
-        <span></span><span></span><span></span>
+        <span></span>
+        <span></span>
+        <span></span>
       </button>
 
-      <a class="brand-logo" id="brandLogo" href="/" aria-label="ZK FITS home">
-        ZK FITS
+      <a class="brand-logo" href="/" aria-label="ZK FITS home">
+        <img id="storeLogo" src="" alt="ZK FITS" hidden>
+        <span id="storeName">ZK FITS</span>
       </a>
 
       <nav class="main-nav" id="mainNav" aria-label="Main navigation">
         <a href="/">Home</a>
         <a href="/#women">Women</a>
         <a href="/#girls">Girls</a>
-        <a href="/#products">Shop</a>
+        <a href="/#collection">Shop</a>
         <a href="/#contact">Contact</a>
       </nav>
 
@@ -42,190 +52,288 @@
         <button class="icon-button" id="cartButton" type="button"
           aria-label="Open shopping bag">
           <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M5 8h14l-1 13H6L5 8Z"></path>
+            <path d="M5 8h14l1 13H4L5 8Z"></path>
             <path d="M9 9V6a3 3 0 0 1 6 0v3"></path>
           </svg>
           <span class="cart-count" id="cartCount">0</span>
         </button>
       </div>
+
     </div>
   </header>
 
+  <!-- MOBILE MENU OVERLAY -->
   <div class="menu-overlay" id="menuOverlay"></div>
 
-  <main>
+  <main class="product-main">
+
+    <!-- BREADCRUMB -->
     <div class="product-breadcrumb">
       <a href="/">Home</a>
       <span>/</span>
       <a href="/#products">Shop</a>
       <span>/</span>
-      <span id="breadcrumbProduct">Product</span>
+      <span id="breadcrumbProductName">Product</span>
     </div>
 
-    <section class="product-detail-section" id="productDetail">
-      <div class="product-loading" id="productLoading">
-        <span class="loading-spinner"></span>
-        <p>Loading product...</p>
-      </div>
+    <!-- PRODUCT DETAILS -->
+    <section class="product-detail-section">
 
-      <div class="product-detail-grid" id="productContent" hidden>
-        <div class="product-gallery">
-          <div class="product-main-image">
-            <button class="gallery-arrow gallery-prev" id="galleryPrev"
-              type="button" aria-label="Previous image">‹</button>
-            <img id="mainProductImage" src="" alt="">
-            <button class="gallery-arrow gallery-next" id="galleryNext"
-              type="button" aria-label="Next image">›</button>
-            <span class="product-sale-label" id="productSaleBadge" hidden>SALE</span>
-          </div>
-          <div class="product-thumbnails" id="productThumbnails"></div>
+      <div class="product-gallery">
+
+        <div class="product-main-image">
+          <img id="productImage" src="" alt="Product image">
         </div>
 
-        <div class="product-information">
-          <span class="product-category-label" id="productCategory"></span>
-          <h1 id="productTitle">Product name</h1>
+        <div class="product-thumbnails" id="productThumbnails"></div>
 
-          <div class="product-rating-summary" id="productRatingSummary">
-            <span class="rating-stars" id="ratingStars">☆☆☆☆☆</span>
-            <span id="ratingCount">No reviews yet</span>
+      </div>
+
+      <div class="product-information">
+
+        <span class="section-kicker" id="productCategory">ZK FITS COLLECTION</span>
+
+        <h1 id="productTitle">Product Name</h1>
+
+        <div class="product-rating" id="productRating">
+          <span id="ratingStars">★★★★★</span>
+          <span id="ratingCount">(0 reviews)</span>
+        </div>
+
+        <div class="product-price">
+          <strong id="productPrice">Rs. 0</strong>
+          <del id="productComparePrice" hidden></del>
+          <span id="productDiscount" hidden></span>
+        </div>
+
+        <div class="product-description" id="productDescription">
+          Discover this beautiful ZK FITS design.
+        </div>
+
+        <!-- VARIANTS -->
+        <div class="product-options" id="productOptions">
+
+          <div class="product-option" id="sizeOption" hidden>
+            <label for="productSize">Size</label>
+            <select id="productSize">
+              <option value="">Select size</option>
+            </select>
           </div>
 
-          <div class="product-detail-price" id="productPrice"></div>
-          <p class="product-detail-description" id="productDescription"></p>
+          <div class="product-option" id="colorOption" hidden>
+            <label for="productColor">Color</label>
+            <select id="productColor">
+              <option value="">Select color</option>
+            </select>
+          </div>
 
-          <div class="product-availability" id="productAvailability"></div>
+        </div>
 
-          <div class="product-variants" id="productVariants"></div>
+        <!-- QUANTITY -->
+        <div class="quantity-section">
+          <label for="productQuantity">Quantity</label>
 
-          <div class="product-quantity">
-            <label for="productQuantity">Quantity</label>
-            <div class="quantity-control">
-              <button type="button" id="quantityMinus" aria-label="Decrease quantity">−</button>
-              <input id="productQuantity" type="number" min="1" value="1" inputmode="numeric">
-              <button type="button" id="quantityPlus" aria-label="Increase quantity">+</button>
+          <div class="quantity-control">
+            <button type="button" id="quantityMinus"
+              aria-label="Decrease quantity">−</button>
+
+            <input type="number" id="productQuantity"
+              value="1" min="1" max="99">
+
+            <button type="button" id="quantityPlus"
+              aria-label="Increase quantity">+</button>
+          </div>
+        </div>
+
+        <!-- ACTION BUTTONS -->
+        <div class="product-actions">
+
+          <button class="button button-dark button-full"
+            type="button" id="addToCartButton">
+            ADD TO CART
+          </button>
+
+          <button class="button button-light button-full"
+            type="button" id="buyNowButton">
+            BUY IT NOW
+          </button>
+
+        </div>
+
+        <div class="product-trust">
+          <div>
+            <span>✓</span>
+            <p>Quality Fashion</p>
+          </div>
+
+          <div>
+            <span>✓</span>
+            <p>Secure Shopping</p>
+          </div>
+
+          <div>
+            <span>✓</span>
+            <p>Customer Support</p>
+          </div>
+        </div>
+
+        <!-- PRODUCT INFORMATION ACCORDIONS -->
+        <div class="product-accordions">
+
+          <details class="product-accordion" open>
+            <summary>Product Details</summary>
+            <div id="productDetailsContent">
+              Beautifully designed for your everyday and special occasions.
             </div>
-          </div>
+          </details>
 
-          <div class="product-purchase-actions">
-            <button class="button button-dark button-full" id="addToCartButton" type="button">
-              ADD TO CART
-            </button>
-            <button class="button button-outline button-full" id="buyNowButton" type="button">
-              BUY IT NOW
-            </button>
-          </div>
+          <details class="product-accordion">
+            <summary>Shipping Information</summary>
+            <div id="shippingInformation">
+              Delivery information will be confirmed during checkout.
+            </div>
+          </details>
 
-          <div class="product-trust-points">
-            <div><span>✓</span><p>Cash on Delivery</p></div>
-            <div><span>✓</span><p>Easy Returns</p></div>
-            <div><span>✓</span><p>Secure Order Process</p></div>
-          </div>
+          <details class="product-accordion">
+            <summary>Payment Methods</summary>
+            <div>
+              Cash on Delivery, Bank Transfer, Easypaisa and JazzCash.
+            </div>
+          </details>
 
-          <div class="product-extra-details">
-            <details>
-              <summary>Product Details</summary>
-              <div id="fullProductDetails"></div>
-            </details>
+        </div>
 
-            <details id="returnPolicySection" open>
-              <summary id="returnPolicyTitle">Returns & Exchanges</summary>
-              <div id="returnPolicyContent" style="white-space: pre-line;">
-                Please contact ZK FITS for return and exchange information.
-              </div>
-            </details>
-          </div>
-
-          <button class="share-product-button" id="shareProductButton" type="button">
-            ↗ Share this product
+        <div class="product-share">
+          <button type="button" id="shareProductButton">
+            Share Product
           </button>
         </div>
+
       </div>
 
-      <div class="product-error" id="productError" hidden>
-        <h2>Product not found</h2>
-        <p>This product may be unavailable or has been removed.</p>
-        <a class="button button-dark" href="/">CONTINUE SHOPPING</a>
-      </div>
     </section>
 
-    <section class="product-reviews-section" id="reviews">
+    <!-- CUSTOMER REVIEWS -->
+    <section class="reviews-section" id="reviews">
+
       <div class="section-heading">
         <span class="section-kicker">CUSTOMER FEEDBACK</span>
-        <h2>Reviews</h2>
-        <p>Real feedback from customers who purchased this product.</p>
+        <h2>Customer Reviews</h2>
+        <p>See what customers think about this product.</p>
       </div>
 
-      <div class="reviews-summary" id="reviewsSummary">
-        <span class="reviews-average" id="reviewsAverage">—</span>
-        <div>
-          <div class="rating-stars" id="reviewsStars">☆☆☆☆☆</div>
-          <p id="reviewsTotal">No approved reviews yet</p>
+      <div class="reviews-summary">
+
+        <div class="reviews-average">
+          <strong id="reviewsAverage">0.0</strong>
+          <div id="reviewsStars">★★★★★</div>
+          <span id="reviewsTotal">0 reviews</span>
         </div>
+
       </div>
 
       <div class="reviews-list" id="reviewsList">
-        <p class="reviews-empty">No reviews yet. Be the first to share your experience.</p>
+        <p>No reviews yet. Be the first to review this product.</p>
       </div>
 
-      <div class="review-form-wrap">
+      <div class="review-form-section">
         <h3>Write a Review</h3>
+
         <form id="reviewForm">
-          <label for="reviewName">Your name</label>
-          <input id="reviewName" name="name" type="text" maxlength="80" required>
 
-          <label for="reviewEmail">Email address</label>
-          <input id="reviewEmail" name="email" type="email" maxlength="160" required>
+          <label for="reviewName">Your Name</label>
+          <input type="text" id="reviewName"
+            name="name" required placeholder="Enter your name">
 
-          <label for="reviewRating">Your rating</label>
+          <label for="reviewEmail">Email Address</label>
+          <input type="email" id="reviewEmail"
+            name="email" required placeholder="Enter your email">
+
+          <label for="reviewRating">Your Rating</label>
           <select id="reviewRating" name="rating" required>
             <option value="">Select rating</option>
-            <option value="5">★★★★★ — Excellent</option>
-            <option value="4">★★★★☆ — Very good</option>
-            <option value="3">★★★☆☆ — Good</option>
-            <option value="2">★★☆☆☆ — Fair</option>
-            <option value="1">★☆☆☆☆ — Poor</option>
+            <option value="5">★★★★★ - Excellent</option>
+            <option value="4">★★★★ - Very Good</option>
+            <option value="3">★★★ - Good</option>
+            <option value="2">★★ - Fair</option>
+            <option value="1">★ - Poor</option>
           </select>
 
-          <label for="reviewText">Your review</label>
-          <textarea id="reviewText" name="review" rows="5"
-            maxlength="1500" required></textarea>
+          <label for="reviewText">Your Review</label>
+          <textarea id="reviewText" name="review"
+            rows="4" required placeholder="Share your experience"></textarea>
 
-          <p class="review-form-note">
-            Reviews are checked before appearing publicly.
-          </p>
-          <p class="review-form-message" id="reviewFormMessage" role="status"></p>
+          <p id="reviewFormMessage" role="status"></p>
 
-          <button class="button button-dark" id="submitReviewButton" type="submit">
+          <button type="submit" class="button button-dark"
+            id="submitReviewButton">
             SUBMIT REVIEW
           </button>
+
         </form>
       </div>
+
     </section>
 
-    <section class="related-products-section" id="relatedProductsSection" hidden>
+    <!-- RELATED PRODUCTS -->
+    <section class="related-products-section">
       <div class="section-heading">
-        <span class="section-kicker">DISCOVER MORE</span>
-        <h2>You May Also Like</h2>
+        <span class="section-kicker">YOU MAY ALSO LIKE</span>
+        <h2>Explore More Styles</h2>
       </div>
+
       <div class="product-grid" id="relatedProducts"></div>
     </section>
+
   </main>
 
+  <!-- FOOTER -->
   <footer class="site-footer" id="siteFooter">
-    <div class="footer-main">
-      <div class="footer-about">
-        <a class="footer-brand" href="/" id="footerBrand">ZK FITS</a>
-        <p id="footerDescription">Style, comfort and elegance for every occasion.</p>
-        <div class="social-links" id="socialLinks"></div>
-      </div>
 
-      <div class="footer-column">
-        <h3>QUICK LINKS</h3>
-        <nav id="footerQuickLinks">
-          <a href="/">Home</a>
-          <a href="/#women">Women</a>
-          <a href="/#girls">Girls</a>
-        </nav>
+    <div class="footer-main">
+
+      <div class="footer-about">
+        <a class="footer-brand" href="/">ZK FITS</a>
+
+        <p id="footerText">
+          Discover elegant Pakistani fashion for women and girls.
+        </p>
+
+        <div class="social-links" id="socialLinks">
+
+          <a id="socialInstagram" href="#" target="_blank"
+            rel="noopener" aria-label="Instagram" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="3" width="18" height="18" rx="5"></rect>
+              <circle cx="12" cy="12" r="4"></circle>
+              <circle cx="18" cy="6" r="1" class="filled"></circle>
+            </svg>
+          </a>
+
+          <a id="socialFacebook" href="#" target="_blank"
+            rel="noopener" aria-label="Facebook" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M14 8h4V3h-4c-4 0-6 2-6 6v3H5v5h3v4h5v-4h4l1-5h-5V9c0-1 0-1 1-1Z"></path>
+            </svg>
+          </a>
+
+          <a id="socialTikTok" href="#" target="_blank"
+            rel="noopener" aria-label="TikTok" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M14 3v11a4 4 0 1 1-4-4"></path>
+              <path d="M14 3c1 3 3 5 6 5"></path>
+            </svg>
+          </a>
+
+          <a id="socialWhatsApp" href="#" target="_blank"
+            rel="noopener" aria-label="WhatsApp" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20 11.5a8 8 0 0 1-12 7l-4 1 1-4a8 8 0 1 1 15-4Z"></path>
+              <path d="M9 8c.5 2 2 4 4 5l2-1"></path>
+            </svg>
+          </a>
+
+        </div>
       </div>
 
       <div class="footer-column">
@@ -233,114 +341,199 @@
         <nav>
           <a href="/#contact">Contact Us</a>
           <a href="/#products">Shop</a>
-          <a href="#returnPolicySection">Return Policy</a>
+          <a href="/return-policy.html">Return Policy</a>
+        </nav>
+      </div>
+
+      <div class="footer-column">
+        <h3>SHOPPING</h3>
+        <nav>
+          <a href="/#women">Women</a>
+          <a href="/#girls">Girls</a>
+          <a href="/#collection">Collections</a>
         </nav>
       </div>
 
       <div class="footer-column">
         <h3>CONTACT</h3>
-        <div id="footerContact">
-          <p>Contact ZK FITS for assistance.</p>
-        </div>
+        <p id="footerPhone">Customer Support</p>
+        <p id="footerEmail"></p>
+        <p id="footerAddress"></p>
       </div>
+
     </div>
 
     <div class="footer-bottom">
-      <p id="footerCopyright">© ZK FITS. All Rights Reserved.</p>
+      <p>© <span id="currentYear"></span> ZK FITS. All Rights Reserved.</p>
+      <p>Elegance in Every Stitch.</p>
     </div>
+
   </footer>
 
+  <!-- CART DRAWER -->
   <div class="drawer-overlay" id="drawerOverlay"></div>
-  <aside class="cart-drawer" id="cart" aria-label="Shopping bag">
+
+  <aside class="cart-drawer" id="cart" aria-label="Shopping cart"
+    aria-hidden="true">
+
     <div class="drawer-header">
       <div>
         <span class="section-kicker">YOUR SELECTION</span>
         <h2>Your Shopping Bag</h2>
       </div>
-      <button class="close-button" id="closeCart" type="button" aria-label="Close cart">×</button>
+
+      <button class="close-button" id="closeCart"
+        type="button" aria-label="Close cart">×</button>
     </div>
+
     <div class="cart-items" id="cartItems">
-      <div class="empty-cart"><p>Your bag is currently empty.</p></div>
+      <div class="empty-cart">
+        <p>Your shopping bag is empty.</p>
+      </div>
     </div>
+
     <div class="cart-footer">
-      <p class="cart-shipping-note" id="cartShippingNote"></p>
       <div class="cart-subtotal">
-        <strong>Subtotal</strong>
+        <span>Subtotal</span>
         <strong id="cartSubtotal">Rs. 0</strong>
       </div>
-      <p class="cart-small-note">Shipping calculated at checkout.</p>
-      <button class="button button-dark button-full" id="checkoutButton" type="button">
+
+      <p class="cart-small-note">
+        Shipping charges are calculated at checkout.
+      </p>
+
+      <button class="button button-dark button-full"
+        id="checkoutButton" type="button" disabled>
         PROCEED TO CHECKOUT
       </button>
     </div>
+
   </aside>
 
-  <div class="modal-overlay" id="checkoutModal">
-    <div class="modal-card checkout-card">
-      <button class="close-button modal-close" id="closeCheckout" type="button">×</button>
+  <!-- CHECKOUT MODAL -->
+  <div class="modal-overlay" id="checkoutModal" aria-hidden="true">
+
+    <div class="modal-card checkout-card" role="dialog"
+      aria-modal="true" aria-labelledby="checkoutTitle">
+
+      <button class="close-button modal-close" id="closeCheckout"
+        type="button" aria-label="Close">×</button>
+
       <div class="checkout-header">
         <span class="section-kicker">ALMOST YOURS</span>
-        <h2>Complete Your Order</h2>
-        <p>Enter your details to place your order.</p>
+        <h2 id="checkoutTitle">Complete Your Order</h2>
+        <p>Please enter your details to place your order.</p>
       </div>
 
       <form id="checkoutForm">
+
         <div class="checkout-fields">
-          <label>Full Name
-            <input name="customer_name" type="text" required maxlength="120">
+
+          <label>
+            Full Name *
+            <input type="text" name="customer_name"
+              required autocomplete="name" placeholder="Your full name">
           </label>
-          <label>Phone Number
-            <input name="phone" type="tel" required maxlength="30">
+
+          <label>
+            Email Address *
+            <input type="email" name="customer_email"
+              required autocomplete="email" placeholder="you@example.com">
           </label>
-          <label>Email Address
-            <input name="customer_email" type="email" required maxlength="160">
+
+          <label>
+            Phone Number *
+            <input type="tel" name="phone"
+              required autocomplete="tel" placeholder="03XXXXXXXXX">
           </label>
-          <label>Complete Delivery Address
-            <textarea name="address" rows="3" required maxlength="1000"></textarea>
+
+          <label>
+            Complete Delivery Address *
+            <textarea name="address" rows="3"
+              required autocomplete="street-address"
+              placeholder="House, street, area, city"></textarea>
           </label>
-          <label>Payment Method
-            <select name="payment" required>
+
+          <label>
+            Payment Method *
+            <select name="payment_method" id="paymentMethod" required>
+              <option value="">Select payment method</option>
               <option value="Cash on Delivery">Cash on Delivery</option>
               <option value="Bank Transfer">Bank Transfer</option>
               <option value="Easypaisa">Easypaisa</option>
               <option value="JazzCash">JazzCash</option>
             </select>
           </label>
+
         </div>
 
         <div class="checkout-summary">
           <h3>Order Summary</h3>
+
           <div id="checkoutSummaryItems"></div>
-          <div class="summary-line"><span>Subtotal</span><strong id="checkoutSubtotal">Rs. 0</strong></div>
-          <div class="summary-line"><span>Shipping</span><strong id="checkoutShipping">Rs. 0</strong></div>
-          <div class="summary-line summary-total"><span>Total</span><strong id="checkoutTotal">Rs. 0</strong></div>
+
+          <div class="summary-line">
+            <span>Subtotal</span>
+            <strong id="checkoutSubtotal">Rs. 0</strong>
+          </div>
+
+          <div class="summary-line">
+            <span>Shipping</span>
+            <strong id="checkoutShipping">Calculated at checkout</strong>
+          </div>
+
+          <div class="summary-line summary-total">
+            <span>Total</span>
+            <strong id="checkoutTotal">Rs. 0</strong>
+          </div>
         </div>
 
         <p class="checkout-error" id="checkoutError" role="alert"></p>
-        <button class="button button-dark button-full" id="placeOrderButton" type="submit">
+
+        <button class="button button-dark button-full"
+          id="placeOrderButton" type="submit">
           PLACE ORDER
         </button>
-        <p class="checkout-privacy">Your information is used to process your order.</p>
+
       </form>
+
     </div>
   </div>
 
-  <div class="modal-overlay" id="successModal">
-    <div class="modal-card success-card">
+  <!-- ORDER SUCCESS -->
+  <div class="modal-overlay" id="successModal" aria-hidden="true">
+
+    <div class="modal-card success-card" role="dialog"
+      aria-modal="true" aria-labelledby="successTitle">
+
       <div class="success-icon">✓</div>
+
       <span class="section-kicker">THANK YOU</span>
-      <h2>Order Placed!</h2>
-      <p>Your order has been received successfully.</p>
+
+      <h2 id="successTitle">Your Order Is Placed!</h2>
+
+      <p id="successMessage">
+        Thank you for shopping with ZK FITS.
+      </p>
+
       <p class="order-reference" id="successOrderReference"></p>
-      <button class="button button-dark button-full" id="continueShopping" type="button">
+
+      <button class="button button-dark button-full"
+        id="continueShopping" type="button">
         CONTINUE SHOPPING
       </button>
+
     </div>
+
   </div>
 
-  <div class="store-toast" id="storeToast" role="status"></div>
+  <!-- TOAST -->
+  <div class="store-toast" id="storeToast"
+    role="status" aria-live="polite"></div>
 
-  <script src="/assets/store.js" defer></script>
-  <script src="/assets/product.js" defer></script>
+  <noscript>
+    <p>Please enable JavaScript to shop at ZK FITS.</p>
+  </noscript>
+
 </body>
 </html>
