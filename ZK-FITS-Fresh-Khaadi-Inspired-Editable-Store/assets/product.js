@@ -1,9 +1,7 @@
 /* =====================================================
    ZK FITS — PRODUCT DETAIL PAGE
    Product details, variants, gallery, cart and reviews
-   Reviews API:
-   GET  /api/reviews?product_id=ID
-   POST /api/reviews
+   Editable Return & Exchange Policy
    ===================================================== */
 
 (() => {
@@ -423,14 +421,39 @@
     }
   }
 
+  /* =========================================
+     EDITABLE RETURN & EXCHANGE POLICY
+     Reads values saved from Admin Settings
+     ========================================= */
+
   function renderTrustAndPolicy() {
+    const content = $("returnPolicyContent");
+
     const policy =
       state.settings.return_policy ||
       state.settings.returns_policy ||
-      state.settings.returnPolicy;
+      state.settings.returnPolicy ||
+      "";
 
-    if (policy && $("returnPolicyContent")) {
-      $("returnPolicyContent").textContent = String(policy);
+    const title =
+      state.settings.return_policy_title ||
+      "Returns & Exchanges";
+
+    // Update customer-facing policy heading
+    const details = content?.closest("details");
+    const summary = details?.querySelector("summary");
+
+    if (summary) {
+      summary.textContent = title;
+    }
+
+    // Update customer-facing policy text
+    if (content) {
+      content.textContent = String(policy).trim()
+        ? String(policy)
+        : "Please contact ZK FITS for return and exchange information.";
+
+      content.style.whiteSpace = "pre-line";
     }
   }
 
