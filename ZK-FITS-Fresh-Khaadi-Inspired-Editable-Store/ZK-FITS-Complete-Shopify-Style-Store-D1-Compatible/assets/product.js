@@ -652,7 +652,15 @@
     if (menu && settings.menu_links) {
       let links = [];
       try { links = JSON.parse(settings.menu_links); } catch { links = String(settings.menu_links).split("\n").map(line => { const [label,url] = line.split("|"); return {label,url}; }); }
-      if (Array.isArray(links) && links.length) menu.innerHTML = links.filter(x => x && x.label && x.url && !String(x.url).includes("return-policy")).map(x => `<a href="${escapeHTML(x.url)}">${escapeHTML(x.label)}</a>`).join("");
+      if (Array.isArray(links) && links.length) menu.innerHTML = links
+        .filter(x => x && (x.label || x.title) && (x.url || x.href) && !String(x.url || x.href).includes("return-policy"))
+        .map(x => {
+          const label = String(x.label || x.title).trim();
+          const rawUrl = String(x.url || x.href).trim();
+          const url = rawUrl.startsWith("#") ? `/${rawUrl}` : rawUrl;
+          if (!label || !url || /^\s*javascript:/i.test(url)) return "";
+          return `<a href="${escapeHTML(url)}">${escapeHTML(label)}</a>`;
+        }).join("");
     }
   }
 

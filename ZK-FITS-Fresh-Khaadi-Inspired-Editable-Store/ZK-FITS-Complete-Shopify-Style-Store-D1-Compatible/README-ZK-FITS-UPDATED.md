@@ -3,12 +3,14 @@
 This package updates the existing ZK FITS Cloudflare Pages website.
 
 ## Included changes
-- Product page uses one vertical layout on desktop and mobile: gallery first, purchase options and quantity below, then description and details.
+- Product page uses one vertical layout on desktop and mobile: gallery first, purchase options and quantity below, then both Add to Cart and Buy Now buttons, followed by description and details.
+- Both purchase buttons remain side-by-side on mobile, including narrow 320px screens.
 - Product images preserve their natural aspect ratio; mobile gallery supports finger swipe and hides previous/next arrows.
 - Product admin allows multiple product images without the previous 10-image cap.
 - Colour is optional. A size-only inventory row is supported; colour-specific images are optional.
 - Hero kicker, heading, subtitle, and button text/link are controlled by Admin. Leave these fields empty to show a plain banner.
-- Mobile menu panel is layered above the dimming overlay so its links can be tapped.
+- Mobile menu links are tappable on both homepage and product page; custom hash links entered in Admin resolve back to the matching homepage section when clicked from a product page.
+- Default menu includes Home, Women, Girls, Collections, Featured and Contact links.
 - Admin checks for new orders while the dashboard is open and shows a popup for newly received orders.
 - When Admin changes an order to Confirmed, the customer receives a separate order-confirmation email through the existing Resend integration.
 - Customer's initial email says the order was received and is awaiting confirmation.

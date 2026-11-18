@@ -1738,3 +1738,20 @@ button:disabled {
 .site-header { position: relative; z-index: 40; }
 .menu-overlay { z-index: 35; }
 @media (max-width: 760px) { .main-nav { z-index: 50; } }
+
+
+/* Reliable mobile navigation stacking and tap targets. */
+@media (max-width: 700px) {
+  .menu-overlay { z-index: 55 !important; pointer-events: none; }
+  .menu-overlay.open { pointer-events: auto; }
+  .main-nav { z-index: 60 !important; pointer-events: auto; }
+  .main-nav.open { visibility: visible; pointer-events: auto; }
+  .main-nav a { display: block; width: 100%; min-height: 48px; position: relative; z-index: 1; pointer-events: auto; }
+  .menu-toggle { position: relative; z-index: 61; cursor: pointer; touch-action: manipulation; }
+  body.menu-open { overflow: hidden; }
+}
+/* Keep the overlay below the sticky header's stacking context, so the menu remains tappable. */
+@media (max-width: 700px) {
+  .menu-overlay { z-index: 35 !important; }
+  .site-header { z-index: 40 !important; }
+}

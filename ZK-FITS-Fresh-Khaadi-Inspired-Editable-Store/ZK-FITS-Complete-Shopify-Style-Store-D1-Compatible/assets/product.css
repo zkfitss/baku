@@ -899,3 +899,26 @@ body.product-page {
   .product-gallery { max-width: 100%; }
   .product-information { max-width: 100%; }
 }
+
+
+/* Keep both purchase actions side-by-side on every mobile width, including 320px. */
+@media (max-width: 360px) {
+  .product-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+  }
+  .product-actions > button {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 46px;
+    padding: 9px 5px !important;
+    font-size: 10px !important;
+    letter-spacing: .15px;
+    white-space: nowrap;
+  }
+}
+@media (min-width: 361px) and (max-width: 700px) {
+  .product-actions { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .product-actions > button { min-width: 0; width: 100%; }
+}

@@ -598,8 +598,11 @@
 
     nav.innerHTML = valid.map(link => {
       const label = link.label || link.title;
-      const url = link.url || link.href;
-
+      const rawUrl = String(link.url || link.href || "").trim();
+      const url = rawUrl.startsWith("#") && location.pathname.endsWith("product.html")
+        ? `/${rawUrl}`
+        : rawUrl;
+      if (/^\s*javascript:/i.test(url)) return "";
       return `<a href="${escapeHTML(url)}">${escapeHTML(label)}</a>`;
     }).join("");
   }
