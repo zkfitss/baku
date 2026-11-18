@@ -1,6 +1,9 @@
 const COOKIE_NAME = "zkfits_admin";
+
 const DEFAULT_IMAGE_BASE =
   "https://pub-63b9c8d4a58e4bf58b300ef548a2b9b5.r2.dev";
+
+const ADMIN_EMAIL = "zkfitss@gmail.com";
 
 const json = (data, status = 200, headers = {}) =>
   new Response(JSON.stringify(data), {
@@ -90,7 +93,19 @@ function normalizeVariants(input) {
 }
 
 function validEmail(value) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim());
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+    String(value || "").trim()
+  );
+}
+
+function escapeHTML(value) {
+  return String(value ?? "").replace(/[&<>"']/g, char => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  })[char]);
 }
 
 async function getSettings(env) {
@@ -103,17 +118,49 @@ async function getSettings(env) {
   );
 }
 
-async function sendOrderEmail(env, order) {
-  if (!env.RESEND_API_KEY || !order.customer_email) {
-    return {
-      sent: false,
-      reason: "Email service is not configured or customer email is missing"
-    };
+// EMAIL SERVICE
+async function sendEmail(env, { to, subject, html, replyTo }) {
+  if (!env.RESEND_API_KEY) {
+    return { sent: false, reason: "RESEND_API_KEY is not configured." };
   }
 
-  const from =
-    env.EMAIL_FROM || "ZK FITS <orders@zkfitss.com>";
+  const from = env.EMAIL_FROM || "ZK FITS <orders@zkfitss.com>";
 
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + env.RESEND_API_KEY,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        from,
+        to: Array.isArray(to) ? to : [to],
+        reply_to: replyTo || ADMIN_EMAIL,
+        subject,
+        html
+      })
+    });
+
+    const result = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      return {
+        sent: false,
+        reason: result.message || "Email provider rejected the request."
+      };
+    }
+
+    return { sent: true };
+  } catch (error) {
+    return {
+      sent: false,
+      reason: error.message || "Email could not be sent."
+    };
+  }
+}
+
+async function sendOrderEmails(env, order) {
   const itemRows = order.items.map(item => `
     <tr>
       <td style="padding:10px;border-bottom:1px solid #eee">
@@ -130,88 +177,67 @@ async function sendOrderEmail(env, order) {
     </tr>
   `).join("");
 
-  const html = `
+  const details = `
     <div style="font-family:Arial,sans-serif;color:#292521;max-width:650px;margin:auto">
-      <div style="background:#292521;color:white;padding:25px;text-align:center">
+      <div style="background:#292521;color:white;padding:24px;text-align:center">
         <h1 style="margin:0;letter-spacing:3px">ZK FITS</h1>
-        <p style="margin-bottom:0">Thank you for shopping with us</p>
       </div>
-
-      <div style="padding:25px">
-        <h2>Thank you, ${escapeHTML(order.customer_name)}!</h2>
-        <p>Your order has been received successfully.</p>
-
-        <p><strong>Order ID:</strong> ${escapeHTML(order.id)}</p>
-        <p><strong>Payment method:</strong> ${escapeHTML(order.payment)}</p>
-
-        <h3>Order details</h3>
-
+      <div style="padding:24px">
+        <h2>Order #${escapeHTML(order.id)}</h2>
+        <p><b>Customer:</b> ${escapeHTML(order.customer_name)}</p>
+        <p><b>Email:</b> ${escapeHTML(order.customer_email)}</p>
+        <p><b>Phone:</b> ${escapeHTML(order.phone)}</p>
+        <p><b>Address:</b> ${escapeHTML(order.address)}</p>
+        <p><b>Payment:</b> ${escapeHTML(order.payment)}</p>
         <table style="width:100%;border-collapse:collapse">
           <thead>
             <tr>
-              <th style="text-align:left;padding:10px;border-bottom:2px solid #292521">Product</th>
-              <th style="padding:10px;border-bottom:2px solid #292521">Qty</th>
-              <th style="text-align:right;padding:10px;border-bottom:2px solid #292521">Price</th>
+              <th style="text-align:left;padding:10px">Product</th>
+              <th style="padding:10px">Qty</th>
+              <th style="text-align:right;padding:10px">Price</th>
             </tr>
           </thead>
           <tbody>${itemRows}</tbody>
         </table>
-
         <h2 style="text-align:right">
           Total: PKR ${Number(order.total).toLocaleString("en-PK")}
         </h2>
-
-        <p>Delivery address: ${escapeHTML(order.address)}</p>
-        <p>Phone: ${escapeHTML(order.phone)}</p>
-
-        <p>Our team will contact you regarding your order.</p>
-        <p>Thank you for choosing ZK FITS.</p>
       </div>
     </div>
   `;
 
-  try {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Authorization": "Bearer " + env.RESEND_API_KEY,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        from,
-        to: [order.customer_email],
-        reply_to: "zkfitss@gmail.com",
-        subject: "ZK FITS - Order Confirmation #" + order.id,
-        html
-      })
-    });
+  const customerHtml = `
+    <div style="font-family:Arial,sans-serif;color:#292521">
+      <h2>Thank you, ${escapeHTML(order.customer_name)}!</h2>
+      <p>Your order has been received successfully.</p>
+      ${details}
+      <p>Our team will contact you regarding your order.</p>
+    </div>
+  `;
 
-    const result = await response.json().catch(() => ({}));
+  const adminHtml = `
+    <h2>New order received - ZK FITS</h2>
+    ${details}
+  `;
 
-    if (!response.ok) {
-      return {
-        sent: false,
-        reason: result.message || "Email provider rejected the request"
-      };
-    }
+  const results = await Promise.all([
+    sendEmail(env, {
+      to: order.customer_email,
+      subject: "ZK FITS - Order Confirmation #" + order.id,
+      html: customerHtml
+    }),
+    sendEmail(env, {
+      to: ADMIN_EMAIL,
+      subject: "New ZK FITS Order #" + order.id,
+      html: adminHtml,
+      replyTo: order.customer_email
+    })
+  ]);
 
-    return { sent: true };
-  } catch (error) {
-    return {
-      sent: false,
-      reason: error.message || "Email could not be sent"
-    };
-  }
-}
-
-function escapeHTML(value) {
-  return String(value ?? "").replace(/[&<>"']/g, char => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;"
-  })[char]);
+  return {
+    customer: results[0],
+    admin: results[1]
+  };
 }
 
 async function uploadImage(request, env) {
@@ -276,6 +302,7 @@ async function uploadImage(request, env) {
   });
 }
 
+// CREATE ORDER
 async function createOrder(request, env) {
   const data = await readBody(request);
 
@@ -283,8 +310,9 @@ async function createOrder(request, env) {
   const phone = String(data.phone || "").trim();
   const address = String(data.address || "").trim();
   const customerEmail = String(data.customer_email || "").trim();
+
   const payment = String(
-    data.payment_method || "Cash on Delivery"
+    data.payment_method || data.payment || "Cash on Delivery"
   ).trim();
 
   const allowedPayments = [
@@ -294,13 +322,13 @@ async function createOrder(request, env) {
     "JazzCash"
   ];
 
-  if (!customerName || !phone || !address) {
+  if (!customerName || !phone || !address || !customerEmail) {
     return json({
-      error: "Please complete your name, phone and delivery address."
+      error: "Please complete your name, email, phone and delivery address."
     }, 400);
   }
 
-  if (customerEmail && !validEmail(customerEmail)) {
+  if (!validEmail(customerEmail)) {
     return json({ error: "Please enter a valid email address." }, 400);
   }
 
@@ -322,7 +350,7 @@ async function createOrder(request, env) {
     const id = String(item.id || "");
     const size = String(item.size || "").trim();
     const color = String(item.color || "").trim();
-    const quantity = Math.floor(Number(item.quantity) || 0);
+    const quantity = Math.floor(Number(item.quantity ?? item.qty) || 0);
 
     if (!id || quantity < 1 || quantity > 20) {
       return json({ error: "Invalid product or quantity." }, 400);
@@ -331,12 +359,7 @@ async function createOrder(request, env) {
     const key = [id, size, color].join("|");
 
     if (!grouped.has(key)) {
-      grouped.set(key, {
-        id,
-        size,
-        color,
-        quantity: 0
-      });
+      grouped.set(key, { id, size, color, quantity: 0 });
     }
 
     grouped.get(key).quantity += quantity;
@@ -347,14 +370,11 @@ async function createOrder(request, env) {
 
   for (const item of groupedItems) {
     if (!productsById.has(item.id)) {
-      const product = await env.DB
-        .prepare(`
-          SELECT id, name, title, price, sale_price, stock, variants
-          FROM products
-          WHERE id = ? AND active = 1
-        `)
-        .bind(item.id)
-        .first();
+      const product = await env.DB.prepare(`
+        SELECT id, name, title, price, sale_price, stock, variants
+        FROM products
+        WHERE id = ? AND active = 1
+      `).bind(item.id).first();
 
       if (!product) {
         return json({
@@ -362,7 +382,10 @@ async function createOrder(request, env) {
         }, 400);
       }
 
-      productsById.set(item.id, product);
+      productsById.set(item.id, {
+        ...product,
+        variants: parseJSON(product.variants)
+      });
     }
   }
 
@@ -372,11 +395,21 @@ async function createOrder(request, env) {
 
   for (const item of groupedItems) {
     const product = productsById.get(item.id);
-    const variants = parseJSON(product.variants);
-    const hasVariants = variants.length > 0;
+
+    let updated = updatedProducts.get(item.id);
+
+    if (!updated) {
+      updated = {
+        stock: Number(product.stock) || 0,
+        variants: product.variants.map(variant => ({ ...variant }))
+      };
+      updatedProducts.set(item.id, updated);
+    }
+
+    const hasVariants = updated.variants.length > 0;
 
     if (hasVariants) {
-      const variantIndex = variants.findIndex(variant =>
+      const variantIndex = updated.variants.findIndex(variant =>
         String(variant.size || "").toLowerCase() === item.size.toLowerCase() &&
         String(variant.color || "").toLowerCase() === item.color.toLowerCase()
       );
@@ -388,41 +421,28 @@ async function createOrder(request, env) {
         }, 400);
       }
 
-      const available = Number(variants[variantIndex].stock) || 0;
+      const available = Number(updated.variants[variantIndex].stock) || 0;
 
       if (available < item.quantity) {
-        return json({
-          error: "Insufficient stock for " +
-            (product.title || product.name) +
-            " (" + item.size + " / " + item.color + ")."
-        }, 400);
-      }
-
-      variants[variantIndex].stock = available - item.quantity;
-
-      const existing = updatedProducts.get(item.id) || {
-        stock: Number(product.stock) || 0,
-        variants
-      };
-
-      existing.stock = Math.max(0, existing.stock - item.quantity);
-      existing.variants = variants;
-      updatedProducts.set(item.id, existing);
-    } else {
-      const existing = updatedProducts.get(item.id) || {
-        stock: Number(product.stock) || 0,
-        variants: []
-      };
-
-      if (existing.stock < item.quantity) {
         return json({
           error: "Insufficient stock for " +
             (product.title || product.name) + "."
         }, 400);
       }
 
-      existing.stock -= item.quantity;
-      updatedProducts.set(item.id, existing);
+      updated.variants[variantIndex].stock =
+        available - item.quantity;
+
+      updated.stock = Math.max(0, updated.stock - item.quantity);
+    } else {
+      if (updated.stock < item.quantity) {
+        return json({
+          error: "Insufficient stock for " +
+            (product.title || product.name) + "."
+        }, 400);
+      }
+
+      updated.stock -= item.quantity;
     }
 
     const unitPrice = Number(
@@ -487,16 +507,8 @@ async function createOrder(request, env) {
   statements.push(
     env.DB.prepare(`
       INSERT INTO orders (
-        id,
-        customer_name,
-        phone,
-        address,
-        payment,
-        items,
-        total,
-        status,
-        created_at,
-        customer_email
+        id, customer_name, phone, address, payment,
+        items, total, status, created_at, customer_email
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
@@ -515,7 +527,7 @@ async function createOrder(request, env) {
 
   await env.DB.batch(statements);
 
-  const emailResult = await sendOrderEmail(env, {
+  const emailResults = await sendOrderEmails(env, {
     id: orderId,
     customer_name: customerName,
     customer_email: customerEmail,
@@ -532,13 +544,16 @@ async function createOrder(request, env) {
     subtotal,
     shipping,
     total,
-    email_sent: emailResult.sent,
-    email_message: emailResult.sent
-      ? "Confirmation email sent."
-      : emailResult.reason
+    email_sent: emailResults.customer.sent,
+    admin_email_sent: emailResults.admin.sent,
+    email_message: {
+      customer: emailResults.customer.reason || "Customer email processed.",
+      admin: emailResults.admin.reason || "Admin email processed."
+    }
   });
 }
 
+// SAVE PRODUCT
 async function saveProduct(request, env, productId = null) {
   const data = await readBody(request);
 
@@ -549,6 +564,7 @@ async function saveProduct(request, env, productId = null) {
   }
 
   const price = Math.max(0, Number(data.price) || 0);
+
   const salePrice =
     data.sale_price === "" ||
     data.sale_price === null ||
@@ -557,13 +573,9 @@ async function saveProduct(request, env, productId = null) {
       : Math.max(0, Number(data.sale_price) || 0);
 
   const variants = normalizeVariants(data.variants);
-  const variantStock = variants.reduce(
-    (sum, variant) => sum + variant.stock,
-    0
-  );
 
   const stock = variants.length
-    ? variantStock
+    ? variants.reduce((sum, variant) => sum + variant.stock, 0)
     : Math.max(0, Math.floor(Number(data.stock) || 0));
 
   const sizes = Array.isArray(data.sizes)
@@ -593,35 +605,16 @@ async function saveProduct(request, env, productId = null) {
     await env.DB.prepare(`
       UPDATE products
       SET
-        name = ?,
-        title = ?,
-        category = ?,
-        price = ?,
-        sale_price = ?,
-        description = ?,
-        image = ?,
-        sizes = ?,
-        colors = ?,
-        stock = ?,
-        variants = ?,
-        featured = ?,
-        active = ?
+        name = ?, title = ?, category = ?, price = ?,
+        sale_price = ?, description = ?, image = ?,
+        sizes = ?, colors = ?, stock = ?, variants = ?,
+        featured = ?, active = ?
       WHERE id = ?
     `).bind(
-      title,
-      title,
-      category,
-      price,
-      salePrice,
-      description,
-      image,
-      JSON.stringify(sizes),
-      JSON.stringify(colors),
-      stock,
-      JSON.stringify(variants),
-      featured,
-      active,
-      productId
+      title, title, category, price, salePrice,
+      description, image, JSON.stringify(sizes),
+      JSON.stringify(colors), stock, JSON.stringify(variants),
+      featured, active, productId
     ).run();
 
     return json({ ok: true, id: productId });
@@ -631,50 +624,29 @@ async function saveProduct(request, env, productId = null) {
 
   await env.DB.prepare(`
     INSERT INTO products (
-      id,
-      name,
-      title,
-      category,
-      price,
-      sale_price,
-      description,
-      image,
-      sizes,
-      colors,
-      stock,
-      variants,
-      featured,
-      active,
-      created_at
+      id, name, title, category, price, sale_price,
+      description, image, sizes, colors, stock,
+      variants, featured, active, created_at
     )
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
-    id,
-    title,
-    title,
-    category,
-    price,
-    salePrice,
-    description,
-    image,
-    JSON.stringify(sizes),
-    JSON.stringify(colors),
-    stock,
-    JSON.stringify(variants),
-    featured,
-    active,
-    new Date().toISOString()
+    id, title, title, category, price, salePrice,
+    description, image, JSON.stringify(sizes),
+    JSON.stringify(colors), stock, JSON.stringify(variants),
+    featured, active, new Date().toISOString()
   ).run();
 
   return json({ ok: true, id });
 }
 
+// MAIN API ROUTER
 export async function onRequest({ request, env }) {
   if (!env.DB) {
     return json({ error: "D1 binding DB is missing." }, 500);
   }
 
   const url = new URL(request.url);
+
   const path = url.pathname
     .replace(/^\/api\/?/, "")
     .split("/")
@@ -701,11 +673,7 @@ export async function onRequest({ request, env }) {
 
     // ADMIN LOGOUT
     if (path[0] === "logout") {
-      return json(
-        { ok: true },
-        200,
-        cookieHeader("", 0)
-      );
+      return json({ ok: true }, 200, cookieHeader("", 0));
     }
 
     // CHECK ADMIN SESSION
@@ -724,7 +692,6 @@ export async function onRequest({ request, env }) {
           WHERE active = 1
           ORDER BY featured DESC, created_at DESC
         `).all(),
-
         getSettings(env)
       ]);
 
@@ -734,14 +701,167 @@ export async function onRequest({ request, env }) {
       });
     }
 
+    // PUBLIC PRODUCT REVIEWS
+    if (path[0] === "reviews" && !path[1] && method === "GET") {
+      const productId = String(
+        url.searchParams.get("product_id") || ""
+      ).trim();
+
+      if (!productId) {
+        return json({ error: "Product ID is required." }, 400);
+      }
+
+      const result = await env.DB.prepare(`
+        SELECT id, product_id, customer_name, rating, review, created_at
+        FROM product_reviews
+        WHERE product_id = ? AND status = 'approved'
+        ORDER BY created_at DESC
+      `).bind(productId).all();
+
+      const reviews = result.results || [];
+      const total = reviews.length;
+
+      const average = total
+        ? reviews.reduce((sum, item) => sum + Number(item.rating), 0) / total
+        : 0;
+
+      return json({
+        ok: true,
+        reviews,
+        total,
+        average: Number(average.toFixed(1))
+      });
+    }
+
+    // CUSTOMER SUBMITS REVIEW
+    if (path[0] === "reviews" && !path[1] && method === "POST") {
+      const data = await readBody(request);
+
+      const productId = String(data.product_id || "").trim();
+      const name = String(data.customer_name || "").trim();
+      const email = String(data.customer_email || "").trim();
+      const review = String(data.review || "").trim();
+      const rating = Number(data.rating);
+
+      if (!productId || !name || !email || !review) {
+        return json({ error: "Please complete all review fields." }, 400);
+      }
+
+      if (
+        productId.length > 100 ||
+        name.length > 100 ||
+        email.length > 254 ||
+        review.length > 3000
+      ) {
+        return json({ error: "One or more fields are too long." }, 400);
+      }
+
+      if (!validEmail(email)) {
+        return json({ error: "Please enter a valid email address." }, 400);
+      }
+
+      if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+        return json({ error: "Rating must be between 1 and 5." }, 400);
+      }
+
+      const product = await env.DB.prepare(
+        "SELECT id FROM products WHERE id = ? AND active = 1"
+      ).bind(productId).first();
+
+      if (!product) {
+        return json({ error: "Product not found or unavailable." }, 404);
+      }
+
+      await env.DB.prepare(`
+        INSERT INTO product_reviews
+        (product_id, customer_name, customer_email, rating, review)
+        VALUES (?, ?, ?, ?, ?)
+      `).bind(productId, name, email, rating, review).run();
+
+      return json({
+        ok: true,
+        message: "Your review has been submitted for approval."
+      }, 201);
+    }
+
     // CUSTOMER ORDER CHECKOUT
     if (path[0] === "orders" && !path[1] && method === "POST") {
       return await createOrder(request, env);
     }
 
-    // ALL OTHER ROUTES REQUIRE ADMIN LOGIN
+    // OTHER ROUTES REQUIRE ADMIN LOGIN
     if (!isAdmin(request, token)) {
       return json({ error: "Unauthorized." }, 401);
+    }
+
+    // ADMIN REVIEW LIST
+    if (path[0] === "reviews" && path[1] === "admin" && method === "GET") {
+      const status = String(url.searchParams.get("status") || "").trim();
+
+      let result;
+
+      if (["pending", "approved", "rejected"].includes(status)) {
+        result = await env.DB.prepare(`
+          SELECT r.*, p.title AS product_title, p.name AS product_name
+          FROM product_reviews r
+          LEFT JOIN products p ON p.id = r.product_id
+          WHERE r.status = ?
+          ORDER BY r.created_at DESC
+        `).bind(status).all();
+      } else {
+        result = await env.DB.prepare(`
+          SELECT r.*, p.title AS product_title, p.name AS product_name
+          FROM product_reviews r
+          LEFT JOIN products p ON p.id = r.product_id
+          ORDER BY r.created_at DESC
+        `).all();
+      }
+
+      return json({
+        ok: true,
+        reviews: result.results || []
+      });
+    }
+
+    // ADMIN APPROVES OR REJECTS REVIEW
+    if (path[0] === "reviews" && path[1] && method === "PUT") {
+      const data = await readBody(request);
+      const status = String(data.status || "");
+
+      if (!["pending", "approved", "rejected"].includes(status)) {
+        return json({ error: "Invalid review status." }, 400);
+      }
+
+      const existing = await env.DB.prepare(
+        "SELECT id FROM product_reviews WHERE id = ?"
+      ).bind(path[1]).first();
+
+      if (!existing) {
+        return json({ error: "Review not found." }, 404);
+      }
+
+      await env.DB.prepare(
+        "UPDATE product_reviews SET status = ? WHERE id = ?"
+      ).bind(status, path[1]).run();
+
+      return json({ ok: true });
+    }
+
+    // ADMIN DELETES REVIEW
+    if (path[0] === "reviews" && path[1] && method === "DELETE") {
+      const existing = await env.DB.prepare(
+        "SELECT id FROM product_reviews WHERE id = ?"
+      ).bind(path[1]).first();
+
+      if (!existing) {
+        return json({ error: "Review not found." }, 404);
+      }
+
+      await env.DB.prepare(
+        "DELETE FROM product_reviews WHERE id = ?"
+      ).bind(path[1]).run();
+
+      return json({ ok: true });
     }
 
     // IMAGE UPLOAD
@@ -751,20 +871,22 @@ export async function onRequest({ request, env }) {
 
     // ADMIN DASHBOARD DATA
     if (path[0] === "admin" && method === "GET") {
-      const [products, orders, settings] = await Promise.all([
+      const [products, orders, settings, reviews] = await Promise.all([
         env.DB.prepare(`
-          SELECT *
-          FROM products
-          ORDER BY created_at DESC
+          SELECT * FROM products ORDER BY created_at DESC
         `).all(),
 
         env.DB.prepare(`
-          SELECT *
-          FROM orders
-          ORDER BY created_at DESC
+          SELECT * FROM orders ORDER BY created_at DESC
         `).all(),
 
-        getSettings(env)
+        getSettings(env),
+
+        env.DB.prepare(`
+          SELECT COUNT(*) AS total,
+          SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending
+          FROM product_reviews
+        `).first()
       ]);
 
       return json({
@@ -776,7 +898,12 @@ export async function onRequest({ request, env }) {
           items: parseJSON(order.items)
         })),
 
-        settings
+        settings,
+
+        reviewStats: {
+          total: Number(reviews?.total || 0),
+          pending: Number(reviews?.pending || 0)
+        }
       });
     }
 
@@ -792,19 +919,17 @@ export async function onRequest({ request, env }) {
 
     // DELETE PRODUCT
     if (path[0] === "products" && path[1] && method === "DELETE") {
-      const existing = await env.DB
-        .prepare("SELECT id FROM products WHERE id = ?")
-        .bind(path[1])
-        .first();
+      const existing = await env.DB.prepare(
+        "SELECT id FROM products WHERE id = ?"
+      ).bind(path[1]).first();
 
       if (!existing) {
         return json({ error: "Product not found." }, 404);
       }
 
-      await env.DB
-        .prepare("DELETE FROM products WHERE id = ?")
-        .bind(path[1])
-        .run();
+      await env.DB.prepare(
+        "DELETE FROM products WHERE id = ?"
+      ).bind(path[1]).run();
 
       return json({ ok: true });
     }
@@ -825,19 +950,16 @@ export async function onRequest({ request, env }) {
         return json({ error: "Invalid order status." }, 400);
       }
 
-      const existing = await env.DB
-        .prepare("SELECT id FROM orders WHERE id = ?")
-        .bind(path[1])
-        .first();
+      const existing = await env.DB.prepare(
+        "SELECT id FROM orders WHERE id = ?"
+      ).bind(path[1]).first();
 
       if (!existing) {
         return json({ error: "Order not found." }, 404);
       }
 
       await env.DB.prepare(`
-        UPDATE orders
-        SET status = ?
-        WHERE id = ?
+        UPDATE orders SET status = ? WHERE id = ?
       `).bind(data.status, path[1]).run();
 
       return json({ ok: true });
