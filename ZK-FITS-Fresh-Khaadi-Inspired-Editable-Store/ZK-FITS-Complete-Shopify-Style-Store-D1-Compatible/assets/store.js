@@ -257,6 +257,7 @@
       setting("announcement", "Welcome to ZK FITS — Discover your style")
     );
 
+    setText("#heroKicker", setting("hero_kicker", "THE NEW COLLECTION"));
     setText(
       "#heroTitle",
       setting("hero_title", "Elegance in Every Stitch")
@@ -429,29 +430,44 @@
   function startVisualRotations() {
     if (heroTimer) clearInterval(heroTimer);
     if (collectionTimer) clearInterval(collectionTimer);
-    const slides = parseImageList(setting("hero_slides", "[]"));
-    if (!slides.length && setting("hero_image")) slides.push(setting("hero_image"));
+
+    const desktopSlides = parseImageList(setting("hero_slides", "[]"));
+    if (!desktopSlides.length && setting("hero_image")) desktopSlides.push(setting("hero_image"));
+    const mobileSlides = parseImageList(setting("hero_mobile_slides", "[]"));
+    if (!mobileSlides.length && setting("hero_mobile_image")) mobileSlides.push(setting("hero_mobile_image"));
     const hero = $("#heroImage");
     const controls = $("#heroSliderControls");
-    const mobileHero = setting("hero_mobile_image");
-    const mobileSlides = parseImageList(setting("hero_mobile_slides", "[]"));
     const mobile = () => window.matchMedia("(max-width: 700px)").matches;
+    let activeSlides = [];
+    let lastViewport = mobile();
+
+    const getSlides = () => mobile() && mobileSlides.length ? mobileSlides : desktopSlides;
     const setHero = index => {
+      const slides = getSlides();
       if (!slides.length || !hero) return;
-      heroSlideIndex = (index + slides.length) % slides.length;
-      const mobileSource = mobileSlides.length ? mobileSlides[heroSlideIndex % mobileSlides.length] : mobileHero;
-      const animate = setting("hero_slider_enabled", "1") !== "0";
-      if (animate) hero.style.opacity = "0";
-      hero.src = mobile() && mobileSource ? mobileSource : slides[heroSlideIndex];
-      hero.style.transition = animate ? "opacity .35s ease" : "none";
-      if (animate) window.setTimeout(() => { hero.style.opacity = "1"; }, 60);
-      else hero.style.opacity = "1";
+      activeSlides = slides;
+      heroSlideIndex = ((index % slides.length) + slides.length) % slides.length;
+      const nextSrc = slides[heroSlideIndex];
+      // Do not fade/reassign the same image: this prevents a one-image mobile banner
+      // from visibly flashing when desktop slides rotate in the background.
+      if (hero.getAttribute("src") !== nextSrc) {
+        hero.style.transition = "opacity .35s ease";
+        hero.style.opacity = "0";
+        hero.src = nextSrc;
+        const reveal = () => { hero.style.opacity = "1"; };
+        if (hero.complete) requestAnimationFrame(reveal);
+        else hero.addEventListener("load", reveal, { once: true });
+      } else {
+        hero.style.opacity = "1";
+      }
       hero.hidden = false;
       $("#heroPlaceholder") && ($("#heroPlaceholder").hidden = true);
-    };
-    if (slides.length) {
-      setHero(heroSlideIndex);
       if (controls) controls.hidden = slides.length < 2 || setting("hero_slider_enabled", "1") === "0";
+    };
+
+    activeSlides = getSlides();
+    if (activeSlides.length) {
+      setHero(Math.min(heroSlideIndex, activeSlides.length - 1));
       const heroSection = $(".hero-section");
       if (heroSection && !heroSection.dataset.swipeReady) {
         let touchStartX = 0;
@@ -459,13 +475,32 @@
         heroSection.addEventListener("touchend", event => {
           const endX = event.changedTouches[0]?.clientX || 0;
           const delta = endX - touchStartX;
-          if (Math.abs(delta) > 45 && slides.length > 1) setHero(heroSlideIndex + (delta < 0 ? 1 : -1));
+          if (Math.abs(delta) > 45 && getSlides().length > 1) setHero(heroSlideIndex + (delta < 0 ? 1 : -1));
         }, { passive:true });
         heroSection.dataset.swipeReady = "1";
       }
-      if (slides.length > 1 && setting("hero_slider_enabled", "1") !== "0") heroTimer = setInterval(() => setHero(heroSlideIndex + 1), 10000);
+      // Both desktop and mobile use the same 10-second interval. A single image
+      // never gets an autoplay timer, so it remains completely still.
+      if (activeSlides.length > 1 && setting("hero_slider_enabled", "1") !== "0") {
+        heroTimer = setInterval(() => setHero(heroSlideIndex + 1), 10000);
+      }
       if ($("#heroPrev")) $("#heroPrev").onclick = () => setHero(heroSlideIndex - 1);
       if ($("#heroNext")) $("#heroNext").onclick = () => setHero(heroSlideIndex + 1);
+    } else if (controls) {
+      controls.hidden = true;
+    }
+
+    // If the visitor rotates the device or resizes across the mobile breakpoint,
+    // switch to that viewport's own slide set without waiting for a timer tick.
+    if (!window.__zkHeroResizeBound) {
+      window.addEventListener("resize", () => {
+        const nowMobile = mobile();
+        if (nowMobile !== lastViewport) {
+          lastViewport = nowMobile;
+          startVisualRotations();
+        }
+      }, { passive: true });
+      window.__zkHeroResizeBound = true;
     }
 
     const rotateCollections = () => {

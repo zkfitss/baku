@@ -307,7 +307,7 @@
     form.reset();
 
     editingProductImage = product?.image || "";
-    editingProductImages = Array.isArray(product?.images) ? [...product.images].slice(0, 10) : [];
+    editingProductImages = [...(product?.image ? [product.image] : []), ...(Array.isArray(product?.images) ? product.images : [])].filter(Boolean).slice(0, 10);
 
     form.elements.id.value = product?.id || "";
     form.elements.title.value =
@@ -315,7 +315,6 @@
 
     form.elements.category.value =
       product?.category || "Women";
-    form.elements.collection.value = product?.collection || "";
 
     form.elements.price.value = product?.price ?? "";
 
@@ -331,7 +330,6 @@
     form.elements.description.value =
       product?.description || "";
 
-    form.elements.image.value = editingProductImage;
 
     form.elements.featured.checked =
       Boolean(product?.featured);
@@ -342,11 +340,7 @@
     $("#editorTitle").textContent =
       product ? "Edit Product" : "Add New Product";
 
-    $("#productImagePreview").innerHTML =
-      editingProductImage
-        ? `<img src="${escapeHTML(editingProductImage)}" alt="Product preview">`
-        : "";
-    renderProductGalleryPreview();
+    renderProductImagesPreview();
 
     $("#variantRows").innerHTML = "";
 
@@ -430,14 +424,10 @@
 
   $("#generateVariants")?.addEventListener("click", () => {
     const form = $("#productForm");
-    const sizes = String(form.elements.sizes.value || "").split(",").map(x => x.trim()).filter(Boolean);
-    const colors = String(form.elements.colors.value || "").split(",").map(x => x.trim()).filter(Boolean);
+    const sizes = splitSizeList(form.elements.sizes.value);
+    const colors = splitColorList(form.elements.colors.value);
     if (!sizes.length || !colors.length) {
       notify("Enter product sizes and at least one colour first.", true);
-      return;
-    }
-    if (colors.length < 5) {
-      notify("For the requested setup, add at least 5 colours (ideally 5–6).", true);
       return;
     }
     const existing = collectVariants();
@@ -451,6 +441,18 @@
     combinations.forEach(addVariantRow);
     notify(`${combinations.length} size-colour combinations generated. Enter stock for each one.`);
   });
+
+  function splitSizeList(value) {
+    const raw = String(value || "").trim();
+    if (!raw) return [];
+    // Accept comma-separated values, and also the common shorthand "S M L XL".
+    return (raw.includes(",") ? raw.split(",") : raw.split(/\s+/))
+      .map(value => value.trim()).filter(Boolean);
+  }
+
+  function splitColorList(value) {
+    return String(value || "").split(",").map(value => value.trim()).filter(Boolean);
+  }
 
   function collectVariants() {
     return [
@@ -490,43 +492,42 @@
     return result.url;
   }
 
-  $("#productImage")?.addEventListener("change", async event => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    try {
-      const preview = $("#productImagePreview");
-
-      preview.textContent = "Uploading image...";
-
-      const url = await uploadImage(file, "products");
-
-      editingProductImage = url;
-      $("#productForm").elements.image.value = url;
-
-      preview.innerHTML = `
-        <img src="${escapeHTML(url)}" alt="Product image preview">
-      `;
-
-      notify("Product image uploaded.");
-
-    } catch (error) {
-      notify(error.message, true);
-      $("#productImagePreview").textContent = "";
-    }
-  });
-
-  function renderProductGalleryPreview() {
-    const preview = $("#productGalleryPreview");
+  function renderProductImagesPreview() {
+    const preview = $("#productImagesPreview");
     if (!preview) return;
-    preview.innerHTML = editingProductImages.map((url, index) => `<span class="admin-image-thumb"><img src="${escapeHTML(url)}" alt="Product gallery image"><button type="button" data-gallery-image-remove="${index}" aria-label="Remove image">×</button></span>`).join("");
+    preview.innerHTML = editingProductImages.map((url, index) => `<span class="admin-image-thumb"><img src="${escapeHTML(url)}" alt="Product image ${index + 1}"><button type="button" data-product-image-remove="${index}" aria-label="Remove image">×</button></span>`).join("");
   }
 
-  $("#productGalleryPreview")?.addEventListener("click", event => {
-    const button = event.target.closest("[data-gallery-image-remove]");
+  $("#productImagesPreview")?.addEventListener("click", event => {
+    const button = event.target.closest("[data-product-image-remove]");
     if (!button) return;
-    editingProductImages.splice(Number(button.dataset.galleryImageRemove), 1);
-    renderProductGalleryPreview();
+    editingProductImages.splice(Number(button.dataset.productImageRemove), 1);
+    editingProductImage = editingProductImages[0] || "";
+    renderProductImagesPreview();
+  });
+
+  $("#productImages")?.addEventListener("change", async event => {
+    const files = [...(event.target.files || [])];
+    if (!files.length) return;
+    const input = event.target;
+    input.disabled = true;
+    try {
+      const remaining = Math.max(0, 10 - editingProductImages.length);
+      if (!remaining) { notify("A product can have up to 10 images total.", true); return; }
+      for (const file of files.slice(0, remaining)) {
+        const url = await uploadImage(file, "products");
+        if (url) editingProductImages.push(url);
+      }
+      editingProductImage = editingProductImages[0] || "";
+      renderProductImagesPreview();
+      if (files.length > remaining) notify("Only 10 product images are allowed.", true);
+      else notify("Product images uploaded.");
+    } catch (error) {
+      notify(error.message, true);
+    } finally {
+      input.disabled = false;
+      input.value = "";
+    }
   });
 
   $("#variantRows")?.addEventListener("click", event => {
@@ -538,29 +539,6 @@
     images.splice(Number(button.dataset.variantImageRemove), 1);
     row.dataset.images = JSON.stringify(images);
     row.querySelector(".variant-image-preview").innerHTML = images.map((url, index) => `<span class="admin-image-thumb"><img src="${escapeHTML(url)}" alt="Variant image"><button type="button" data-variant-image-remove="${index}" aria-label="Remove image">×</button></span>`).join("");
-  });
-
-  $("#productGallery")?.addEventListener("change", async event => {
-    const files = [...(event.target.files || [])];
-    if (!files.length) return;
-    const input = event.target;
-    input.disabled = true;
-    try {
-      const remaining = Math.max(0, 9 - editingProductImages.length);
-      if (!remaining) { notify("A product can have up to 10 gallery images.", true); return; }
-      for (const file of files.slice(0, remaining)) {
-        const url = await uploadImage(file, "product-gallery");
-        if (url) editingProductImages.push(url);
-      }
-      if (files.length > remaining) notify("A product supports up to 10 images total, including the main image.");
-      renderProductGalleryPreview();
-      notify("Product gallery images uploaded.");
-    } catch (error) {
-      notify(error.message, true);
-    } finally {
-      input.disabled = false;
-      input.value = "";
-    }
   });
 
   // ------------------------------------
@@ -579,26 +557,18 @@
     const product = {
       title: form.elements.title.value.trim(),
       category: form.elements.category.value,
-      collection: form.elements.collection.value,
       price: Number(form.elements.price.value),
 
       sale_price: form.elements.sale_price.value === ""
         ? null
         : Number(form.elements.sale_price.value),
 
-      sizes: form.elements.sizes.value
-        .split(",")
-        .map(value => value.trim())
-        .filter(Boolean),
-
-      colors: form.elements.colors.value
-        .split(",")
-        .map(value => value.trim())
-        .filter(Boolean),
+      sizes: splitSizeList(form.elements.sizes.value),
+      colors: splitColorList(form.elements.colors.value),
 
       description: form.elements.description.value,
-      image: editingProductImage,
-      images: editingProductImages.slice(0, 9),
+      image: editingProductImages[0] || "",
+      images: editingProductImages.slice(1, 10),
       variants,
 
       stock: variants.length
@@ -610,7 +580,17 @@
     };
 
     if (!product.image) {
-      notify("Please upload a product image.", true);
+      notify("Please upload at least one product image.", true);
+      return;
+    }
+
+    if (product.sizes.length && product.colors.length && !variants.length) {
+      notify("Generate size and colour combinations, then enter stock for each combination.", true);
+      return;
+    }
+
+    if (variants.some(v => !v.size || !v.color)) {
+      notify("Every inventory row must have both a size and a colour.", true);
       return;
     }
 

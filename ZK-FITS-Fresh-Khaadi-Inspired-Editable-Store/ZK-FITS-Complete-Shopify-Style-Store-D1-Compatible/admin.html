@@ -129,18 +129,6 @@
             </label>
 
             <label>
-              Style / Collection
-              <select name="collection">
-                <option value="">Select collection</option>
-                <option value="Stitched">Stitched</option>
-                <option value="Casual">Casual</option>
-                <option value="Festival">Festival</option>
-                <option value="Formal">Formal</option>
-                <option value="Other">Other</option>
-              </select>
-            </label>
-
-            <label>
               Regular Price (PKR)
               <input name="price" type="number" min="0" required>
             </label>
@@ -151,22 +139,19 @@
             </label>
 
             <label>
-              Sizes
-              <input name="sizes" placeholder="S, M, L, XL, XXL">
+              Available Sizes (comma separated)
+              <input name="sizes" placeholder="Small, Medium, Large, XL">
             </label>
 
             <label>
-              Colours
-              <input name="colors" placeholder="Black, White, Maroon">
+              Available Colours (comma separated)
+              <input name="colors" placeholder="Black, Blue, Green, Maroon">
             </label>
 
-            <label>
-              Main Product Image
-              <input id="productImage" type="file" accept="image/jpeg,image/png,image/webp,image/avif">
-            </label>
-            <label>
-              Additional Product Gallery Images
-              <input id="productGallery" type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple>
+            <label class="product-images-upload">
+              Product Images (up to 10)
+              <input id="productImages" type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple>
+              <small>Upload all product photos here. The first image is the main photo. You can also add separate photos to each size/colour combination below.</small>
             </label>
 
             <label>
@@ -179,8 +164,7 @@
 
           </div>
 
-          <div id="productImagePreview" class="image-preview"></div>
-          <div id="productGalleryPreview" class="image-preview"></div>
+          <div id="productImagesPreview" class="image-preview"></div>
 
           <hr>
 
@@ -189,26 +173,25 @@
             <h3>Size & Colour Inventory</h3>
 
             <p>
-              Add each size and colour combination separately.
-              Stock will be managed independently for every combination.
+              Generate the size/colour combinations once. Enter the stock for each one and upload matching colour photos. Customers choose a size first, then an available colour.
             </p>
 
             <div class="variant-heading">
               <span>Size</span>
               <span>Colour</span>
-              <span>Stock Quantity</span>
-              <span>Action</span>
+              <span>Stock</span>
+              <span>Colour photos / Action</span>
             </div>
 
             <div id="variantRows"></div>
 
-            <p class="field-help">For each size + colour combination, upload the matching product photos. When a customer selects that colour, these images will be shown.</p>
+            <p class="field-help">Each size has its own stock for every colour. Upload the photos for that exact size/colour combination; those photos appear when the customer selects it.</p>
 
             <div class="variant-actions">
               <button type="button" class="secondary" id="generateVariants">GENERATE ALL SIZE × COLOUR COMBINATIONS</button>
               <button type="button" class="secondary" id="addVariant">+ ADD SIZE / COLOUR VARIANT</button>
             </div>
-            <p class="field-help">Enter sizes and 5–6 colours above, then generate combinations. Set stock for every size and colour separately before publishing.</p>
+            <p class="field-help">Enter any sizes and colours you offer, then generate combinations. A size or colour is purchasable only when its combination has stock greater than zero.</p>
 
             <input type="hidden" name="variants" id="variantsData">
           </div>
@@ -266,6 +249,11 @@
           <label>
             Announcement Bar
             <input name="announcement" placeholder="Welcome to ZK FITS">
+          </label>
+
+          <label>
+            Hero Kicker / Small Text (e.g. NEW LOOK)
+            <input name="hero_kicker" placeholder="THE NEW COLLECTION">
           </label>
 
           <label>

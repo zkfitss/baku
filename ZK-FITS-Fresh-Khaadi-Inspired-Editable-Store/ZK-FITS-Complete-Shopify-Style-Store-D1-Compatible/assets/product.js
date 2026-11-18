@@ -80,18 +80,21 @@
     return [...new Set(images.filter(Boolean))];
   }
 
-  function normalizeList(value) {
-    const parsed = parseJSON(value, []);
-
-    if (!Array.isArray(parsed)) return [];
-
-    return parsed.map(item => {
-      if (typeof item === "object" && item !== null) {
-        return String(item.name || item.value || item.label || "");
-      }
-
-      return String(item);
-    }).filter(Boolean);
+  function normalizeList(value, kind = "generic") {
+    const parsed = parseJSON(value, null);
+    if (Array.isArray(parsed)) {
+      return parsed.map(item => {
+        if (typeof item === "object" && item !== null) return String(item.name || item.value || item.label || "");
+        return String(item);
+      }).map(item => item.trim()).filter(Boolean);
+    }
+    if (typeof value === "string" && value.trim()) {
+      const raw = value.trim();
+      if (raw.includes(",")) return raw.split(",").map(item => item.trim()).filter(Boolean);
+      if (kind === "sizes") return raw.split(/\s+/).filter(Boolean);
+      return [raw];
+    }
+    return [];
   }
 
   function normalizeVariants(value) {
@@ -422,9 +425,15 @@
     const match = state.variants.find(v =>
       v.size === state.selectedSize && v.color === state.selectedColor
     );
+    const sameColour = state.variants.find(v =>
+      v.color.toLowerCase() === String(state.selectedColor || "").toLowerCase() &&
+      Array.isArray(v.images) && v.images.length
+    );
     const chosen = match && match.images && match.images.length
       ? match.images
-      : getProductImages(state.product);
+      : sameColour && sameColour.images.length
+        ? sameColour.images
+        : getProductImages(state.product);
     state.images = chosen;
     state.imageIndex = Math.min(state.imageIndex, Math.max(0, chosen.length - 1));
     renderImages();
@@ -656,8 +665,8 @@
     state.images = getProductImages(product);
     state.imageIndex = 0;
     state.variants = normalizeVariants(product.variants);
-    state.sizes = normalizeList(product.sizes);
-    state.colors = normalizeList(product.colors);
+    state.sizes = normalizeList(product.sizes, "sizes");
+    state.colors = normalizeList(product.colors, "colors");
     if (!state.sizes.length) state.sizes = [...new Set(state.variants.map(v => v.size).filter(Boolean))];
     if (!state.colors.length) state.colors = [...new Set(state.variants.map(v => v.color).filter(Boolean))];
     state.selectedSize = "";

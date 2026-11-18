@@ -29,10 +29,10 @@ Set these in Pages → Settings → Variables and Secrets:
 Never put API keys in browser JavaScript or commit them to GitHub. Customer and admin order emails cannot be delivered until Resend sender verification and the variables above are configured.
 
 ## 4) Admin
-After deployment open `/admin.html` and sign in with `ADMIN_PASSWORD`. The dashboard supports products, size/colour stock variants, per-variant image galleries, product gallery images, orders, reviews moderation and store appearance settings.
+After deployment open `/admin.html` and sign in with `ADMIN_PASSWORD`. The dashboard supports products, size/colour stock variants, per-variant image galleries, a single 10-image product upload area, orders, reviews moderation and store appearance settings. Product category remains Women or Girls; the separate Style / Collection product field has been removed.
 
 ## 5) Product variants and image management
-For each product, create a row for every available size + colour combination. Example: Small/Black, Small/Maroon, Medium/Black. Enter stock separately and upload the images for that exact combination. The customer product page filters colours by selected size and swaps the gallery to the matching combination's images.
+The Admin product editor has one product-image upload area (up to 10 images total); the first uploaded image is the listing/main image. Enter sizes (comma-separated; the common shorthand `S M L XL` is also accepted) and colours (comma-separated), then use **Generate All Size × Colour Combinations**. Enter stock for each generated size/colour pair. Upload matching photos on each pair when that colour should show its own photos. The customer product page displays each size as its own selectable button, filters colours by the selected size, switches to the selected variant photos, and enables Add to Cart / Buy Now only after a valid in-stock size and colour are selected.
 
 ## 6) Payment and email notes
 COD, bank transfer, Easypaisa and JazzCash are order-selection methods. Wallet/bank transfers are recorded as manual payment choices; they are not automatic gateway verification. Email status is returned by the API and requires a working Resend account and verified sender domain.
