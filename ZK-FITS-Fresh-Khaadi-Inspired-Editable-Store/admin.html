@@ -18,13 +18,7 @@
 
     <label>
       Admin Password
-      <input
-        id="password"
-        type="password"
-        required
-        autocomplete="current-password"
-        placeholder="Enter admin password"
-      >
+      <input id="password" type="password" required autocomplete="current-password" placeholder="Enter admin password">
     </label>
 
     <button class="primary" type="submit">SIGN IN</button>
@@ -79,11 +73,16 @@
           <small>ORDER VALUE</small>
           <strong id="statRevenue">PKR 0</strong>
         </article>
+
+        <article>
+          <small>PENDING ORDERS</small>
+          <strong id="statPendingOrders">0</strong>
+        </article>
       </div>
 
       <h2>Welcome to ZK FITS</h2>
       <p>
-        Manage your products, inventory, customer orders,
+        Manage products, inventory, customer orders, reviews,
         banners, logo, website design and store settings.
       </p>
     </section>
@@ -155,11 +154,7 @@
 
             <label>
               Product Image
-              <input
-                id="productImage"
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/avif"
-              >
+              <input id="productImage" type="file" accept="image/jpeg,image/png,image/webp,image/avif">
             </label>
 
             <label>
@@ -178,7 +173,6 @@
 
           <!-- VARIANT INVENTORY -->
           <div class="variant-section">
-
             <h3>Size & Colour Inventory</h3>
 
             <p>
@@ -195,55 +189,30 @@
 
             <div id="variantRows"></div>
 
-            <button
-              type="button"
-              class="secondary"
-              id="addVariant"
-            >
+            <button type="button" class="secondary" id="addVariant">
               + ADD SIZE / COLOUR VARIANT
             </button>
 
             <input type="hidden" name="variants" id="variantsData">
-
           </div>
 
           <hr>
 
           <label>
             Product Description
-            <textarea
-              name="description"
-              rows="5"
-              placeholder="Write product details, fabric, features and other information..."
-            ></textarea>
+            <textarea name="description" rows="5" placeholder="Write product details, fabric, features and other information..."></textarea>
           </label>
 
           <div class="check-options">
-
             <label class="check">
               <input name="featured" type="checkbox">
               Featured Product
             </label>
-
-            <label class="check">
-              <input name="active" type="checkbox" checked>
-              Visible on Website
-            </label>
-
           </div>
 
           <div class="actions">
-            <button class="primary" type="submit">
-              SAVE PRODUCT
-            </button>
-
-            <button
-              class="secondary"
-              type="button"
-              id="cancelProduct"
-            >
-              CANCEL
-            </button>
+            <button class="primary" type="submit">SAVE PRODUCT</button>
+            <button class="secondary" type="button" id="cancelProduct">CANCEL</button>
           </div>
 
         </form>
@@ -252,20 +221,15 @@
 
     <!-- ORDERS -->
     <section class="panel" id="orders" hidden>
-
       <h2>Customer Orders</h2>
-
       <p>View customer details, ordered products and update order status.</p>
-
       <div id="orderList"></div>
-
     </section>
 
     <!-- STORE SETTINGS -->
     <section class="panel" id="settings" hidden>
 
       <h2>Store Customization</h2>
-
       <p>
         Manage your website logo, banners, colours, header,
         footer, contact information and shipping settings.
@@ -359,11 +323,7 @@
 
           <label class="full-width">
             Menu Links
-            <textarea
-              name="menu_links"
-              rows="5"
-              placeholder="New Arrivals|#new&#10;Women|#women&#10;Girls|#girls&#10;Contact|#contact"
-            ></textarea>
+            <textarea name="menu_links" rows="5" placeholder="New Arrivals|#new&#10;Women|#women&#10;Girls|#girls&#10;Contact|#contact"></textarea>
           </label>
 
           <h3 class="full-width">Footer & Contact Details</h3>
@@ -421,8 +381,33 @@
           </label>
 
           <label>
-            WhatsApp
+            WhatsApp Social Link
             <input name="whatsapp_social" placeholder="https://wa.me/92...">
+          </label>
+
+          <!-- RETURN POLICY -->
+          <h3 class="full-width">Return & Exchange Policy</h3>
+
+          <label class="full-width">
+            Policy Heading
+            <input
+              name="return_policy_title"
+              placeholder="Returns & Exchanges"
+              value="Returns & Exchanges"
+            >
+          </label>
+
+          <label class="full-width">
+            Return Policy Details
+            <textarea
+              name="return_policy"
+              rows="8"
+              placeholder="Write your actual return and exchange policy here..."
+            ></textarea>
+            <small>
+              This text will be displayed on the customer-facing product page.
+              Enter only the return conditions your store actually offers.
+            </small>
           </label>
 
           <h3 class="full-width">Delivery Settings</h3>
