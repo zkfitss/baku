@@ -39,3 +39,15 @@ COD, bank transfer, Easypaisa and JazzCash are order-selection methods. Wallet/b
 
 ## 7) Final live checks
 After deploying, test admin login, image upload/public image access, product create/edit, size-colour selection, cart checkout, inventory reduction, review submission/moderation and both email notifications on the live D1/R2 bindings. Browser and Cloudflare environment testing cannot be completed from the ZIP alone.
+
+
+## Final fixes in this package
+- Hero slider autoplay is set to 10 seconds; visible arrow graphics are hidden while their hit areas remain active, and swipe remains enabled.
+- Product listing cards display uploaded images at their natural aspect ratio without a coloured frame or crop.
+- Product cards show Add to Cart and Buy Now links that take customers to the product page to choose required variants before purchase.
+- Product gallery supports up to 10 images total (main image plus up to 9 additional images).
+- Admin product editor can generate all size × colour combinations from the entered size and colour lists; set stock for each combination before publishing.
+- Product detail page menu selector bug fixed.
+
+## Important
+This package keeps the existing D1 table layout: products use TEXT IDs and orders use the `payment` column. It does not require rerunning the schema or review migrations. Existing product variant rows with zero stock remain unavailable until stock quantities are entered in Admin.

@@ -90,7 +90,7 @@ function normalizeVariants(input) {
       color: String(item.color || item.colour || "").trim(),
       stock: Math.max(0, Math.floor(Number(item.stock) || 0)),
       images: Array.isArray(item.images)
-        ? item.images.filter(url => typeof url === "string" && url.trim()).slice(0, 12)
+        ? item.images.filter(url => typeof url === "string" && url.trim()).slice(0, 10)
         : []
     }))
     .filter(item => item.size || item.color);
@@ -606,7 +606,7 @@ async function saveProduct(request, env, productId = null) {
   const collection = String(data.collection || "").trim();
   const description = String(data.description || "");
   const image = String(data.image || "");
-  const images = Array.isArray(data.images) ? data.images.filter(url => typeof url === "string" && url.trim()).slice(0, 20) : [];
+  const images = Array.isArray(data.images) ? data.images.filter(url => typeof url === "string" && url.trim()).slice(0, 9) : [];
   const featured = data.featured ? 1 : 0;
   const active = data.active === false || Number(data.active) === 0 ? 0 : 1;
 

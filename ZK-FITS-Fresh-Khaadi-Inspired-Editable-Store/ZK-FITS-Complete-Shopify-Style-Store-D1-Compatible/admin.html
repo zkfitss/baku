@@ -204,9 +204,11 @@
 
             <p class="field-help">For each size + colour combination, upload the matching product photos. When a customer selects that colour, these images will be shown.</p>
 
-            <button type="button" class="secondary" id="addVariant">
-              + ADD SIZE / COLOUR VARIANT
-            </button>
+            <div class="variant-actions">
+              <button type="button" class="secondary" id="generateVariants">GENERATE ALL SIZE × COLOUR COMBINATIONS</button>
+              <button type="button" class="secondary" id="addVariant">+ ADD SIZE / COLOUR VARIANT</button>
+            </div>
+            <p class="field-help">Enter sizes and 5–6 colours above, then generate combinations. Set stock for every size and colour separately before publishing.</p>
 
             <input type="hidden" name="variants" id="variantsData">
           </div>

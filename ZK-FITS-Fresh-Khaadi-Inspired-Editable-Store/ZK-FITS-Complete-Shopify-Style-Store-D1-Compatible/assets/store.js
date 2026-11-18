@@ -463,7 +463,7 @@
         }, { passive:true });
         heroSection.dataset.swipeReady = "1";
       }
-      if (slides.length > 1 && setting("hero_slider_enabled", "1") !== "0") heroTimer = setInterval(() => setHero(heroSlideIndex + 1), 3000);
+      if (slides.length > 1 && setting("hero_slider_enabled", "1") !== "0") heroTimer = setInterval(() => setHero(heroSlideIndex + 1), 10000);
       if ($("#heroPrev")) $("#heroPrev").onclick = () => setHero(heroSlideIndex - 1);
       if ($("#heroNext")) $("#heroNext").onclick = () => setHero(heroSlideIndex + 1);
     }
@@ -618,10 +618,10 @@
             ${hasSale ? `<del>${money(original)}</del>` : ""}
           </div>
 
-          <button class="quick-add-button" type="button"
-            data-product="${id}" ${stock <= 0 ? "disabled" : ""}>
-            ${stock <= 0 ? "SOLD OUT" : "VIEW PRODUCT"}
-          </button>
+          <div class="product-card-actions">
+            <a class="quick-add-button card-add-button" href="/product.html?id=${encodeURIComponent(product.id)}&action=cart" ${stock <= 0 ? 'aria-disabled="true"' : ""}>ADD TO CART</a>
+            <a class="quick-add-button card-buy-button" href="/product.html?id=${encodeURIComponent(product.id)}&action=buy" ${stock <= 0 ? 'aria-disabled="true"' : ""}>BUY NOW</a>
+          </div>
         </div>
       </article>
     `;

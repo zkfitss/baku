@@ -199,9 +199,9 @@
      ========================================= */
 
   function setupMenu() {
-    const toggle = $("menuToggle");
-    const nav = $("mainNav");
-    const overlay = $("menuOverlay");
+    const toggle = $("#menuToggle");
+    const nav = $("#mainNav");
+    const overlay = $("#menuOverlay");
 
     if (!toggle || !nav) return;
 
@@ -364,7 +364,7 @@
       : [...new Set(available.map(v => v.color).filter(Boolean))];
 
     const colorsForSize = state.selectedSize
-      ? [...new Set(available.filter(v => v.size === state.selectedSize).map(v => v.color).filter(Boolean))]
+      ? [...new Set(state.variants.filter(v => v.size === state.selectedSize).map(v => v.color).filter(Boolean))]
       : allColors;
 
     const parts = [];
@@ -697,6 +697,12 @@
 
     updateAvailability();
     loadReviews();
+    const requestedAction = new URLSearchParams(location.search).get("action");
+    if (requestedAction === "cart" || requestedAction === "buy") {
+      window.setTimeout(() => {
+        $("#productVariants")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 250);
+    }
   }
 
   /* =========================================

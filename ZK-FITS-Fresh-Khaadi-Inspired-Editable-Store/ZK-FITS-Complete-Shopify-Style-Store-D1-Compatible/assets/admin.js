@@ -307,7 +307,7 @@
     form.reset();
 
     editingProductImage = product?.image || "";
-    editingProductImages = Array.isArray(product?.images) ? [...product.images] : [];
+    editingProductImages = Array.isArray(product?.images) ? [...product.images].slice(0, 10) : [];
 
     form.elements.id.value = product?.id || "";
     form.elements.title.value =
@@ -409,7 +409,7 @@
           const url = await uploadImage(file, "product-variants");
           if (url) uploaded.push(url);
         }
-        row.dataset.images = JSON.stringify([...current, ...uploaded].slice(0, 12));
+        row.dataset.images = JSON.stringify([...current, ...uploaded].slice(0, 10));
         drawPreview();
         notify("Colour images uploaded.");
       } catch (error) {
@@ -426,6 +426,30 @@
 
   $("#addVariant")?.addEventListener("click", () => {
     addVariantRow();
+  });
+
+  $("#generateVariants")?.addEventListener("click", () => {
+    const form = $("#productForm");
+    const sizes = String(form.elements.sizes.value || "").split(",").map(x => x.trim()).filter(Boolean);
+    const colors = String(form.elements.colors.value || "").split(",").map(x => x.trim()).filter(Boolean);
+    if (!sizes.length || !colors.length) {
+      notify("Enter product sizes and at least one colour first.", true);
+      return;
+    }
+    if (colors.length < 5) {
+      notify("For the requested setup, add at least 5 colours (ideally 5–6).", true);
+      return;
+    }
+    const existing = collectVariants();
+    const byKey = new Map(existing.map(v => [`${v.size.toLowerCase()}|${v.color.toLowerCase()}`, v]));
+    const combinations = [];
+    for (const size of sizes) for (const color of colors) {
+      const key = `${size.toLowerCase()}|${color.toLowerCase()}`;
+      combinations.push(byKey.get(key) || { size, color, stock: 0, images: [] });
+    }
+    $("#variantRows").innerHTML = "";
+    combinations.forEach(addVariantRow);
+    notify(`${combinations.length} size-colour combinations generated. Enter stock for each one.`);
   });
 
   function collectVariants() {
@@ -522,10 +546,13 @@
     const input = event.target;
     input.disabled = true;
     try {
-      for (const file of files) {
+      const remaining = Math.max(0, 9 - editingProductImages.length);
+      if (!remaining) { notify("A product can have up to 10 gallery images.", true); return; }
+      for (const file of files.slice(0, remaining)) {
         const url = await uploadImage(file, "product-gallery");
         if (url) editingProductImages.push(url);
       }
+      if (files.length > remaining) notify("A product supports up to 10 images total, including the main image.");
       renderProductGalleryPreview();
       notify("Product gallery images uploaded.");
     } catch (error) {
@@ -571,7 +598,7 @@
 
       description: form.elements.description.value,
       image: editingProductImage,
-      images: editingProductImages,
+      images: editingProductImages.slice(0, 9),
       variants,
 
       stock: variants.length
