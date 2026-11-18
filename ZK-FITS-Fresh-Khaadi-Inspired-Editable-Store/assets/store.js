@@ -7,6 +7,10 @@
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
+  // This script is for the homepage only.
+  // Product page has its own product.js.
+  if (!$("#featuredProducts") || !$("#productGrid")) return;
+
   let products = [];
   let settings = {};
   let cart = loadCart();
@@ -86,6 +90,7 @@
 
   function showModal(element) {
     if (!element) return;
+
     element.classList.add("open");
     element.setAttribute("aria-hidden", "false");
     document.body.classList.add("modal-open");
@@ -93,6 +98,7 @@
 
   function hideModal(element) {
     if (!element) return;
+
     element.classList.remove("open");
     element.setAttribute("aria-hidden", "true");
 
@@ -167,18 +173,22 @@
 
   function availableStock(product) {
     const variants = getVariants(product);
+
     if (variants.length) {
       return variants.reduce((sum, v) => sum + variantStock(v), 0);
     }
+
     return Number(product.stock || 0);
   }
 
   function parseSettings(raw) {
     if (Array.isArray(raw)) {
       const result = {};
+
       raw.forEach(item => {
         if (item && item.key) result[item.key] = item.value;
       });
+
       return result;
     }
 
@@ -187,9 +197,15 @@
 
   function setting(key, fallback = "") {
     const value = settings[key];
+
     return value === undefined || value === null || value === ""
       ? fallback
       : value;
+  }
+
+  function setText(selector, value) {
+    const element = $(selector);
+    if (element) element.textContent = value;
   }
 
   function setImage(id, url) {
@@ -198,6 +214,7 @@
 
     image.src = url;
     image.hidden = false;
+
     image.addEventListener("error", () => {
       image.hidden = true;
     }, { once: true });
@@ -212,32 +229,42 @@
   function applySettings() {
     const storeName = setting("store_name", "ZK FITS");
 
-    $("#storeName").textContent = storeName;
+    setText("#storeName", storeName);
+
     $$(".footer-brand").forEach(el => {
       el.textContent = storeName;
     });
 
     const logo = setting("logo");
+
     if (logo) {
       const logoImage = $("#storeLogo");
-      logoImage.src = logo;
-      logoImage.hidden = false;
-      $("#storeName").hidden = true;
+
+      if (logoImage) {
+        logoImage.src = logo;
+        logoImage.hidden = false;
+      }
+
+      const nameElement = $("#storeName");
+      if (nameElement) nameElement.hidden = true;
     }
 
-    $("#announcementText").textContent = setting(
-      "announcement",
-      "Welcome to ZK FITS — Discover your style"
+    setText(
+      "#announcementText",
+      setting("announcement", "Welcome to ZK FITS — Discover your style")
     );
 
-    $("#heroTitle").textContent = setting(
-      "hero_title",
-      "Elegance in Every Stitch"
+    setText(
+      "#heroTitle",
+      setting("hero_title", "Elegance in Every Stitch")
     );
 
-    $("#heroSubtitle").textContent = setting(
-      "hero_subtitle",
-      "Discover timeless Pakistani fashion, thoughtfully designed for you."
+    setText(
+      "#heroSubtitle",
+      setting(
+        "hero_subtitle",
+        "Discover timeless Pakistani fashion, thoughtfully designed for you."
+      )
     );
 
     setImage("heroImage", setting("hero_image"));
@@ -245,38 +272,50 @@
     setImage("girlsBanner", setting("girls_banner"));
 
     const root = document.documentElement.style;
+
     if (setting("background_color")) {
       root.setProperty("--store-bg", setting("background_color"));
     }
+
     if (setting("text_color")) {
       root.setProperty("--store-text", setting("text_color"));
     }
+
     if (setting("accent_color")) {
       root.setProperty("--store-accent", setting("accent_color"));
     }
+
     if (setting("header_color")) {
       root.setProperty("--store-header", setting("header_color"));
     }
+
     if (setting("footer_color")) {
       root.setProperty("--store-footer", setting("footer_color"));
     }
+
     if (setting("footer_text_color")) {
       root.setProperty("--store-footer-text", setting("footer_text_color"));
     }
 
-    $("#contactHeading").textContent = setting(
-      "contact_heading",
-      "Let's Stay Connected"
+    setText(
+      "#contactHeading",
+      setting("contact_heading", "Let's Stay Connected")
     );
 
-    $("#contactDescription").textContent = setting(
-      "contact_description",
-      "Have a question about an order or product? Get in touch with us."
+    setText(
+      "#contactDescription",
+      setting(
+        "contact_description",
+        "Have a question about an order or product? Get in touch with us."
+      )
     );
 
-    $("#footerText").textContent = setting(
-      "footer_text",
-      "Discover elegant Pakistani fashion for women and girls."
+    setText(
+      "#footerText",
+      setting(
+        "footer_text",
+        "Discover elegant Pakistani fashion for women and girls."
+      )
     );
 
     const phone = setting("phone");
@@ -285,41 +324,64 @@
     const whatsapp = setting("whatsapp_social") || setting("whatsapp");
 
     if (phone) {
-      $("#contactPhone").href = "tel:" + phone.replace(/[^\d+]/g, "");
-      $("#contactPhone").textContent = "Call: " + phone;
-      $("#contactPhone").hidden = false;
-      $("#footerPhone").textContent = phone;
+      const contactPhone = $("#contactPhone");
+
+      if (contactPhone) {
+        contactPhone.href = "tel:" + phone.replace(/[^\d+]/g, "");
+        contactPhone.textContent = "Call: " + phone;
+        contactPhone.hidden = false;
+      }
+
+      setText("#footerPhone", phone);
     }
 
     if (email) {
-      $("#contactEmail").href = "mailto:" + email;
-      $("#contactEmail").textContent = email;
-      $("#contactEmail").hidden = false;
-      $("#footerEmail").textContent = email;
+      const contactEmail = $("#contactEmail");
+
+      if (contactEmail) {
+        contactEmail.href = "mailto:" + email;
+        contactEmail.textContent = email;
+        contactEmail.hidden = false;
+      }
+
+      setText("#footerEmail", email);
     }
 
     if (address) {
-      $("#contactAddress").textContent = address;
-      $("#contactAddress").hidden = false;
-      $("#footerAddress").textContent = address;
+      const contactAddress = $("#contactAddress");
+
+      if (contactAddress) {
+        contactAddress.textContent = address;
+        contactAddress.hidden = false;
+      }
+
+      setText("#footerAddress", address);
     }
 
     if (whatsapp) {
-      const number = whatsapp.replace(/[^\d]/g, "");
-      $("#contactWhatsApp").href = "https://wa.me/" + number;
-      $("#contactWhatsApp").hidden = false;
+      const contactWhatsApp = $("#contactWhatsApp");
+
+      if (contactWhatsApp) {
+        const number = whatsapp.replace(/[^\d]/g, "");
+        contactWhatsApp.href = "https://wa.me/" + number;
+        contactWhatsApp.hidden = false;
+      }
     }
 
     setSocial("socialInstagram", setting("instagram"));
     setSocial("socialFacebook", setting("facebook"));
     setSocial("socialTikTok", setting("tiktok"));
-    setSocial("socialWhatsApp", whatsapp
-      ? "https://wa.me/" + whatsapp.replace(/[^\d]/g, "")
-      : "");
+
+    setSocial(
+      "socialWhatsApp",
+      whatsapp
+        ? "https://wa.me/" + whatsapp.replace(/[^\d]/g, "")
+        : ""
+    );
 
     buildCustomMenu();
 
-    $("#currentYear").textContent = new Date().getFullYear();
+    setText("#currentYear", new Date().getFullYear());
   }
 
   function setSocial(id, url) {
@@ -330,6 +392,9 @@
     link.hidden = false;
   }
 
+  // Admin custom links are applied to the header only.
+  // Footer links remain separately editable in the page HTML.
+  // Return Policy is deliberately excluded from the header.
   function buildCustomMenu() {
     const raw = setting("menu_links");
     if (!raw) return;
@@ -342,6 +407,7 @@
     } catch {
       links = String(raw).split("\n").map(line => {
         const parts = line.split("|");
+
         return {
           label: parts[0]?.trim(),
           url: parts[1]?.trim()
@@ -350,25 +416,30 @@
     }
 
     const nav = $("#mainNav");
-    const footer = $("#footerMenu");
+    if (!nav || !links.length) return;
 
-    if (!links.length) return;
+    const valid = links.filter(link => {
+      if (!link) return false;
 
-    const valid = links.filter(link =>
-      link && (link.label || link.title) && (link.url || link.href)
-    );
+      const label = String(link.label || link.title || "").trim();
+      const url = String(link.url || link.href || "").trim();
+
+      if (!label || !url) return false;
+
+      const isReturnPolicy =
+        normalise(label).includes("return policy") ||
+        normalise(label).includes("returns policy") ||
+        normalise(url).includes("return-policy");
+
+      return !isReturnPolicy;
+    });
 
     if (!valid.length) return;
 
     nav.innerHTML = valid.map(link => {
       const label = link.label || link.title;
       const url = link.url || link.href;
-      return `<a href="${escapeHTML(url)}">${escapeHTML(label)}</a>`;
-    }).join("");
 
-    footer.innerHTML = valid.map(link => {
-      const label = link.label || link.title;
-      const url = link.url || link.href;
       return `<a href="${escapeHTML(url)}">${escapeHTML(label)}</a>`;
     }).join("");
   }
@@ -435,9 +506,13 @@
     const activeProducts = products.filter(isActive);
 
     const featured = activeProducts.filter(isFeatured);
-    $("#featuredProducts").innerHTML = featured.length
-      ? featured.map(productCard).join("")
-      : `<div class="empty-state"><p>Featured products will appear here soon.</p></div>`;
+
+    setHTML(
+      "#featuredProducts",
+      featured.length
+        ? featured.map(productCard).join("")
+        : `<div class="empty-state"><p>Featured products will appear here soon.</p></div>`
+    );
 
     let filtered = activeProducts.filter(product =>
       categoryMatches(product, activeFilter)
@@ -453,11 +528,18 @@
       );
     }
 
-    $("#productGrid").innerHTML = filtered.length
-      ? filtered.map(productCard).join("")
-      : "";
+    setHTML(
+      "#productGrid",
+      filtered.length ? filtered.map(productCard).join("") : ""
+    );
 
-    $("#noProducts").hidden = filtered.length > 0;
+    const noProducts = $("#noProducts");
+    if (noProducts) noProducts.hidden = filtered.length > 0;
+  }
+
+  function setHTML(selector, html) {
+    const element = $(selector);
+    if (element) element.innerHTML = html;
   }
 
   function openProduct(id) {
@@ -465,6 +547,7 @@
     if (!product) return;
 
     selectedProduct = product;
+
     const variants = availableVariants(product);
     const sizes = [...new Set(variants.map(variantSize).filter(Boolean))];
     const colors = [...new Set(variants.map(variantColor).filter(Boolean))];
@@ -486,7 +569,7 @@
         ).join("")
       : "";
 
-    $("#productModalContent").innerHTML = `
+    setHTML("#productModalContent", `
       <div class="product-modal-image">
         ${image
           ? `<img src="${escapeHTML(image)}" alt="${escapeHTML(productName(product))}">`
@@ -539,7 +622,7 @@
           ${stock <= 0 ? "SOLD OUT" : "ADD TO BAG"}
         </button>
       </div>
-    `;
+    `);
 
     showModal($("#productModal"));
   }
@@ -595,6 +678,7 @@
         notify("You have reached the available stock limit.", true);
         return;
       }
+
       existing.quantity += quantity;
     } else {
       cart.push({
@@ -625,10 +709,11 @@
       sum + Number(item.quantity || 0), 0
     );
 
-    $("#cartCount").textContent = count;
-    $("#cartSubtotal").textContent = money(cartSubtotal());
+    setText("#cartCount", count);
+    setText("#cartSubtotal", money(cartSubtotal()));
 
     const container = $("#cartItems");
+    if (!container) return;
 
     if (!cart.length) {
       container.innerHTML = `
@@ -639,7 +724,10 @@
           </button>
         </div>
       `;
-      $("#checkoutButton").disabled = true;
+
+      const checkoutButton = $("#checkoutButton");
+      if (checkoutButton) checkoutButton.disabled = true;
+
       return;
     }
 
@@ -667,7 +755,8 @@
       </div>
     `).join("");
 
-    $("#checkoutButton").disabled = false;
+    const checkoutButton = $("#checkoutButton");
+    if (checkoutButton) checkoutButton.disabled = false;
   }
 
   function changeCart(index, action) {
@@ -676,9 +765,14 @@
 
     if (action === "remove") {
       cart.splice(index, 1);
+
     } else if (action === "minus") {
       item.quantity -= 1;
-      if (item.quantity <= 0) cart.splice(index, 1);
+
+      if (item.quantity <= 0) {
+        cart.splice(index, 1);
+      }
+
     } else if (action === "plus") {
       const product = products.find(p => String(p.id) === String(item.id));
       let stock = product ? Number(product.stock || 0) : 99;
@@ -687,6 +781,7 @@
         const variant = getVariants(product).find(v =>
           variantSize(v) === item.size && variantColor(v) === item.color
         );
+
         stock = variant ? variantStock(variant) : 0;
       }
 
@@ -702,16 +797,27 @@
   }
 
   function openCart() {
-    $("#cartDrawer").classList.add("open");
-    $("#cartDrawer").setAttribute("aria-hidden", "false");
-    $("#drawerOverlay").classList.add("open");
+    const drawer = $("#cartDrawer");
+    const overlay = $("#drawerOverlay");
+
+    if (!drawer || !overlay) return;
+
+    drawer.classList.add("open");
+    drawer.setAttribute("aria-hidden", "false");
+    overlay.classList.add("open");
     document.body.classList.add("modal-open");
   }
 
   function closeCart() {
-    $("#cartDrawer").classList.remove("open");
-    $("#cartDrawer").setAttribute("aria-hidden", "true");
-    $("#drawerOverlay").classList.remove("open");
+    const drawer = $("#cartDrawer");
+    const overlay = $("#drawerOverlay");
+
+    if (drawer) {
+      drawer.classList.remove("open");
+      drawer.setAttribute("aria-hidden", "true");
+    }
+
+    if (overlay) overlay.classList.remove("open");
 
     if (!$(".modal-overlay.open")) {
       document.body.classList.remove("modal-open");
@@ -735,7 +841,7 @@
     const subtotal = cartSubtotal();
     const shipping = shippingAmount();
 
-    $("#checkoutItems").innerHTML = cart.map(item => `
+    setHTML("#checkoutItems", cart.map(item => `
       <div class="summary-line">
         <span>${escapeHTML(item.title)} × ${item.quantity}
           ${item.size ? " · " + escapeHTML(item.size) : ""}
@@ -743,14 +849,12 @@
         </span>
         <strong>${money(item.price * item.quantity)}</strong>
       </div>
-    `).join("");
+    `).join(""));
 
-    $("#checkoutSubtotal").textContent = money(subtotal);
-    $("#checkoutShipping").textContent = shipping === 0
-      ? "Free"
-      : money(shipping);
-    $("#checkoutTotal").textContent = money(subtotal + shipping);
-    $("#checkoutError").textContent = "";
+    setText("#checkoutSubtotal", money(subtotal));
+    setText("#checkoutShipping", shipping === 0 ? "Free" : money(shipping));
+    setText("#checkoutTotal", money(subtotal + shipping));
+    setText("#checkoutError", "");
 
     showModal($("#checkoutModal"));
   }
@@ -761,7 +865,7 @@
     if (isSubmitting || !cart.length) return;
 
     const form = $("#checkoutForm");
-    if (!form.reportValidity()) return;
+    if (!form || !form.reportValidity()) return;
 
     const formData = new FormData(form);
     const customer = Object.fromEntries(formData.entries());
@@ -775,6 +879,8 @@
 
     const button = $("#placeOrderButton");
     const error = $("#checkoutError");
+
+    if (!button || !error) return;
 
     isSubmitting = true;
     button.disabled = true;
@@ -800,19 +906,27 @@
 
       hideModal($("#checkoutModal"));
 
-      const orderId = result.order?.id || result.order_id || result.id || "";
+      const orderId =
+        result.order?.id || result.order_id || result.id || "";
 
-      $("#orderReference").textContent = orderId
-        ? "Order Reference: " + orderId
-        : "";
+      setText(
+        "#orderReference",
+        orderId ? "Order Reference: " + orderId : ""
+      );
 
-      $("#successMessage").textContent = result.email_sent === false
-        ? "Your order has been received. We will contact you regarding your order."
-        : "Thank you for shopping with ZK FITS. Your order confirmation will be sent to your email.";
+      setText(
+        "#successMessage",
+        result.email_sent === false
+          ? "Your order has been received. We will contact you regarding your order."
+          : "Thank you for shopping with ZK FITS. Your order confirmation will be sent to your email."
+      );
 
       showModal($("#successModal"));
+
     } catch (err) {
-      error.textContent = err.message || "Unable to place your order. Please try again.";
+      error.textContent =
+        err.message || "Unable to place your order. Please try again.";
+
     } finally {
       isSubmitting = false;
       button.disabled = false;
@@ -821,64 +935,101 @@
   }
 
   function setupFilters() {
-    $("#collectionFilters").addEventListener("click", event => {
-      const button = event.target.closest("[data-filter]");
-      if (!button) return;
+    const filters = $("#collectionFilters");
+    const sort = $("#sortProducts");
 
-      activeFilter = button.dataset.filter;
+    if (filters) {
+      filters.addEventListener("click", event => {
+        const button = event.target.closest("[data-filter]");
+        if (!button) return;
 
-      $$(".filter-button").forEach(item =>
-        item.classList.toggle("active", item === button)
-      );
+        activeFilter = button.dataset.filter;
 
-      renderProducts();
-    });
+        $$(".filter-button").forEach(item =>
+          item.classList.toggle("active", item === button)
+        );
 
-    $("#sortProducts").addEventListener("change", event => {
-      activeSort = event.target.value;
-      renderProducts();
-    });
+        renderProducts();
+      });
+    }
+
+    if (sort) {
+      sort.addEventListener("change", event => {
+        activeSort = event.target.value;
+        renderProducts();
+      });
+    }
   }
 
+  // Mobile and desktop menu controls.
   function setupMenu() {
     const toggle = $("#menuToggle");
     const nav = $("#mainNav");
     const overlay = $("#menuOverlay");
 
+    if (!toggle || !nav) return;
+
+    function openMenu() {
+      nav.classList.add("open");
+
+      if (overlay) overlay.classList.add("open");
+
+      toggle.classList.add("active");
+      toggle.setAttribute("aria-expanded", "true");
+      toggle.setAttribute("aria-label", "Close menu");
+
+      document.body.classList.add("menu-open");
+    }
+
     function closeMenu() {
       nav.classList.remove("open");
-      overlay.classList.remove("open");
+
+      if (overlay) overlay.classList.remove("open");
+
       toggle.classList.remove("active");
       toggle.setAttribute("aria-expanded", "false");
+      toggle.setAttribute("aria-label", "Open menu");
+
       document.body.classList.remove("menu-open");
     }
 
-    toggle.addEventListener("click", () => {
-      const open = !nav.classList.contains("open");
+    function toggleMenu() {
+      if (nav.classList.contains("open")) {
+        closeMenu();
+      } else {
+        openMenu();
+      }
+    }
 
-      nav.classList.toggle("open", open);
-      overlay.classList.toggle("open", open);
-      toggle.classList.toggle("active", open);
-      toggle.setAttribute("aria-expanded", String(open));
-      document.body.classList.toggle("menu-open", open);
-    });
+    toggle.addEventListener("click", toggleMenu);
 
-    overlay.addEventListener("click", closeMenu);
+    overlay?.addEventListener("click", closeMenu);
 
     nav.addEventListener("click", event => {
-      if (event.target.closest("a")) closeMenu();
+      if (event.target.closest("a")) {
+        closeMenu();
+      }
     });
+
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape") closeMenu();
+    });
+
+    // Ensure the menu starts closed.
+    closeMenu();
   }
 
   function setupEvents() {
     document.addEventListener("click", event => {
       const productButton = event.target.closest("[data-product]");
+
       if (productButton) {
         openProduct(productButton.dataset.product);
         return;
       }
 
       const cartAction = event.target.closest("[data-cart-action]");
+
       if (cartAction) {
         changeCart(
           Number(cartAction.dataset.index),
@@ -887,35 +1038,35 @@
         return;
       }
 
-      if (event.target.id === "addSelectedProduct") {
+      if (event.target.closest("#addSelectedProduct")) {
         addSelectedToCart();
         return;
       }
 
-      if (event.target.id === "continueShopping") {
+      if (event.target.closest("#continueShopping")) {
         closeCart();
-        $("#products").scrollIntoView({ behavior: "smooth" });
+        $("#products")?.scrollIntoView({ behavior: "smooth" });
       }
     });
 
-    $("#cartToggle").addEventListener("click", openCart);
-    $("#closeCart").addEventListener("click", closeCart);
-    $("#drawerOverlay").addEventListener("click", closeCart);
+    $("#cartToggle")?.addEventListener("click", openCart);
+    $("#closeCart")?.addEventListener("click", closeCart);
+    $("#drawerOverlay")?.addEventListener("click", closeCart);
 
-    $("#checkoutButton").addEventListener("click", openCheckout);
-    $("#checkoutForm").addEventListener("submit", placeOrder);
+    $("#checkoutButton")?.addEventListener("click", openCheckout);
+    $("#checkoutForm")?.addEventListener("submit", placeOrder);
 
-    $("#closeProductModal").addEventListener("click", () =>
+    $("#closeProductModal")?.addEventListener("click", () =>
       hideModal($("#productModal"))
     );
 
-    $("#closeCheckout").addEventListener("click", () =>
+    $("#closeCheckout")?.addEventListener("click", () =>
       hideModal($("#checkoutModal"))
     );
 
-    $("#successContinue").addEventListener("click", () => {
+    $("#successContinue")?.addEventListener("click", () => {
       hideModal($("#successModal"));
-      $("#home").scrollIntoView({ behavior: "smooth" });
+      $("#home")?.scrollIntoView({ behavior: "smooth" });
     });
 
     $$(".modal-overlay").forEach(overlay => {
@@ -949,11 +1100,16 @@
     } catch (error) {
       console.error("ZK FITS store loading error:", error);
 
-      $("#featuredProducts").innerHTML =
-        `<div class="empty-state"><h3>Unable to load collection</h3><p>Please refresh the page or try again later.</p></div>`;
+      setHTML(
+        "#featuredProducts",
+        `<div class="empty-state"><h3>Unable to load collection</h3><p>Please refresh the page or try again later.</p></div>`
+      );
 
-      $("#productGrid").innerHTML = "";
-      $("#noProducts").hidden = false;
+      setHTML("#productGrid", "");
+
+      const noProducts = $("#noProducts");
+      if (noProducts) noProducts.hidden = false;
+
       notify("Unable to connect to the store. Please refresh.", true);
     }
   }
@@ -965,7 +1121,7 @@
   }
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", start);
+    document.addEventListener("DOMContentLoaded", start, { once: true });
   } else {
     start();
   }
