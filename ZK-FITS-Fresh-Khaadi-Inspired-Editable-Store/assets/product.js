@@ -2,6 +2,7 @@
    ZK FITS — PRODUCT DETAIL PAGE
    Product details, variants, gallery, cart and reviews
    Editable Return & Exchange Policy
+   Mobile navigation support
    ===================================================== */
 
 (() => {
@@ -9,7 +10,7 @@
 
   const API = "/api";
   const CART_KEY = "zkfits_cart";
-  const $ = (id) => document.getElementById(id);
+  const $ = id => document.getElementById(id);
 
   const state = {
     products: [],
@@ -26,10 +27,10 @@
     stock: 0
   };
 
-  const money = (value) =>
+  const money = value =>
     "Rs. " + Number(value || 0).toLocaleString("en-PK");
 
-  const escapeHTML = (value) =>
+  const escapeHTML = value =>
     String(value ?? "").replace(/[&<>"']/g, char => ({
       "&": "&amp;",
       "<": "&lt;",
@@ -62,6 +63,7 @@
   function getProductPrice(product) {
     const sale = Number(product.sale_price || 0);
     const regular = Number(product.price || 0);
+
     return sale > 0 && sale < regular ? sale : regular;
   }
 
@@ -88,6 +90,7 @@
       if (typeof item === "object" && item !== null) {
         return String(item.name || item.value || item.label || "");
       }
+
       return String(item);
     }).filter(Boolean);
   }
@@ -110,9 +113,10 @@
         return {
           size: parts[0] || "",
           color: parts[1] || "",
-          stock: Math.max(0, Number(
-            typeof stock === "object" ? stock.stock : stock
-          ))
+          stock: Math.max(
+            0,
+            Number(typeof stock === "object" ? stock.stock : stock)
+          )
         };
       });
     }
@@ -190,6 +194,74 @@
     }
   }
 
+  /* =========================================
+     MOBILE AND DESKTOP MENU
+     ========================================= */
+
+  function setupMenu() {
+    const toggle = $("menuToggle");
+    const nav = $("mainNav");
+    const overlay = $("menuOverlay");
+
+    if (!toggle || !nav) return;
+
+    function openMenu() {
+      nav.classList.add("open");
+
+      if (overlay) {
+        overlay.classList.add("open");
+      }
+
+      toggle.classList.add("active");
+      toggle.setAttribute("aria-expanded", "true");
+      toggle.setAttribute("aria-label", "Close menu");
+
+      document.body.classList.add("menu-open");
+    }
+
+    function closeMenu() {
+      nav.classList.remove("open");
+
+      if (overlay) {
+        overlay.classList.remove("open");
+      }
+
+      toggle.classList.remove("active");
+      toggle.setAttribute("aria-expanded", "false");
+      toggle.setAttribute("aria-label", "Open menu");
+
+      document.body.classList.remove("menu-open");
+    }
+
+    toggle.addEventListener("click", () => {
+      if (nav.classList.contains("open")) {
+        closeMenu();
+      } else {
+        openMenu();
+      }
+    });
+
+    overlay?.addEventListener("click", closeMenu);
+
+    nav.addEventListener("click", event => {
+      if (event.target.closest("a")) {
+        closeMenu();
+      }
+    });
+
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape") {
+        closeMenu();
+      }
+    });
+
+    closeMenu();
+  }
+
+  /* =========================================
+     PRODUCT IMAGE GALLERY
+     ========================================= */
+
   function renderImages() {
     const image = $("mainProductImage");
     const thumbnails = $("productThumbnails");
@@ -212,7 +284,8 @@
         type="button"
         data-image-index="${index}"
         aria-label="View product image ${index + 1}">
-        <img src="${escapeHTML(src)}"
+        <img
+          src="${escapeHTML(src)}"
           alt="${escapeHTML(state.product?.name || "Product")}"
           loading="lazy">
       </button>
@@ -244,6 +317,10 @@
     renderImages();
   }
 
+  /* =========================================
+     PRODUCT PRICE
+     ========================================= */
+
   function renderPrice() {
     const product = state.product;
     if (!product || !$("productPrice")) return;
@@ -256,6 +333,7 @@
       <strong class="current-price">
         ${money(hasSale ? sale : regular)}
       </strong>
+
       ${hasSale ? `
         <del class="old-price">${money(regular)}</del>
         <span class="sale-discount">
@@ -269,6 +347,10 @@
     }
   }
 
+  /* =========================================
+     SIZE AND COLOUR VARIANTS
+     ========================================= */
+
   function renderVariants() {
     const container = $("productVariants");
     if (!container) return;
@@ -279,6 +361,7 @@
       parts.push(`
         <div class="variant-group">
           <label class="variant-label">Select Size</label>
+
           <div class="variant-options">
             ${state.sizes.map(size => {
               const unavailable = state.variants.length &&
@@ -307,6 +390,7 @@
       parts.push(`
         <div class="variant-group">
           <label class="variant-label">Select Colour</label>
+
           <div class="variant-options">
             ${state.colors.map(color => {
               const unavailable = state.variants.length &&
@@ -374,11 +458,15 @@
       if (!hasSelection) {
         availability.textContent =
           "Please select your size and colour.";
+
         availability.className = "product-availability";
+
       } else if (stock <= 0) {
         availability.textContent = "Currently out of stock";
+
         availability.className =
           "product-availability out-of-stock";
+
       } else {
         availability.textContent = stock <= 5
           ? `Only ${stock} left in stock`
@@ -422,8 +510,8 @@
   }
 
   /* =========================================
-     EDITABLE RETURN & EXCHANGE POLICY
-     Reads values saved from Admin Settings
+     RETURN & EXCHANGE POLICY
+     Reads saved Admin Settings
      ========================================= */
 
   function renderTrustAndPolicy() {
@@ -439,7 +527,6 @@
       state.settings.return_policy_title ||
       "Returns & Exchanges";
 
-    // Update customer-facing policy heading
     const details = content?.closest("details");
     const summary = details?.querySelector("summary");
 
@@ -447,7 +534,6 @@
       summary.textContent = title;
     }
 
-    // Update customer-facing policy text
     if (content) {
       content.textContent = String(policy).trim()
         ? String(policy)
@@ -456,6 +542,10 @@
       content.style.whiteSpace = "pre-line";
     }
   }
+
+  /* =========================================
+     RELATED PRODUCTS
+     ========================================= */
 
   function renderRelatedProducts() {
     const section = $("relatedProductsSection");
@@ -491,16 +581,22 @@
       return `
         <a class="product-card product-related-card"
           href="/product.html?id=${encodeURIComponent(product.id)}">
+
           <img
             src="${escapeHTML(product.image || "")}"
             alt="${escapeHTML(title)}"
             loading="lazy">
+
           <h3>${escapeHTML(title)}</h3>
           <p>${money(price)}</p>
         </a>
       `;
     }).join("");
   }
+
+  /* =========================================
+     RENDER PRODUCT PAGE
+     ========================================= */
 
   function renderProduct(product) {
     state.product = product;
@@ -549,6 +645,10 @@
     loadReviews();
   }
 
+  /* =========================================
+     LOAD STORE DATA
+     ========================================= */
+
   async function loadStore() {
     const id = getProductId();
 
@@ -560,7 +660,8 @@
     try {
       const response = await fetch(`${API}/store`, {
         method: "GET",
-        headers: { "Accept": "application/json" }
+        headers: { "Accept": "application/json" },
+        credentials: "same-origin"
       });
 
       if (!response.ok) {
@@ -596,9 +697,10 @@
     }
   }
 
-  /* =========================
-     CART
-     ========================= */
+  /* =========================================
+     SHOPPING CART
+     Compatible with homepage cart format
+     ========================================= */
 
   function readCart() {
     try {
@@ -607,6 +709,7 @@
       );
 
       return Array.isArray(cart) ? cart : [];
+
     } catch {
       return [];
     }
@@ -652,7 +755,7 @@
 
     if (existing) {
       const oldQuantity =
-        Number(existing.qty ?? existing.quantity ?? 0);
+        Number(existing.quantity ?? existing.qty ?? 0);
 
       const newQuantity = oldQuantity + state.quantity;
 
@@ -661,8 +764,8 @@
         return false;
       }
 
-      existing.qty = newQuantity;
       existing.quantity = newQuantity;
+      existing.qty = newQuantity;
 
     } else {
       const price = getProductPrice(product);
@@ -683,26 +786,34 @@
     }
 
     saveCart(cart);
+
     window.dispatchEvent(new Event("zkfits:cart-updated"));
 
     showToast("Product added to your shopping bag.");
+
     return true;
   }
 
   function openExistingCart() {
-    $("cartButton")?.click();
+    // Support both homepage and product page cart button IDs.
+    const cartButton =
+      $("cartToggle") ||
+      $("cartButton");
+
+    cartButton?.click();
   }
 
   function buyNow() {
     if (!addProductToCart()) return;
 
     openExistingCart();
+
     $("checkoutButton")?.click();
   }
 
-  /* =========================
+  /* =========================================
      PRODUCT REVIEWS
-     ========================= */
+     ========================================= */
 
   function renderStars(rating) {
     const value = Math.max(
@@ -717,7 +828,9 @@
     if (!value) return "";
 
     const date = new Date(
-      String(value).includes("Z") ? value : value.replace(" ", "T") + "Z"
+      String(value).includes("Z")
+        ? value
+        : value.replace(" ", "T") + "Z"
     );
 
     if (Number.isNaN(date.getTime())) return "";
@@ -760,7 +873,9 @@
 
     if ($("reviewsTotal")) {
       $("reviewsTotal").textContent =
-        total === 1 ? "1 customer review" : `${total} customer reviews`;
+        total === 1
+          ? "1 customer review"
+          : `${total} customer reviews`;
     }
 
     if ($("ratingStars")) {
@@ -789,18 +904,24 @@
 
     list.innerHTML = validReviews.map(review => `
       <article class="customer-review">
+
         <div class="customer-review-heading">
           <strong>${escapeHTML(review.customer_name || "Customer")}</strong>
-          <span class="review-stars" aria-label="${Number(review.rating)} out of 5 stars">
+
+          <span class="review-stars"
+            aria-label="${Number(review.rating)} out of 5 stars">
             ${renderStars(review.rating)}
           </span>
         </div>
+
         <p class="customer-review-text">
           ${escapeHTML(review.review || "")}
         </p>
+
         <time class="customer-review-date">
           ${escapeHTML(formatReviewDate(review.created_at))}
         </time>
+
       </article>
     `).join("");
   }
@@ -822,7 +943,8 @@
         `${API}/reviews?product_id=${encodeURIComponent(product.id)}`,
         {
           method: "GET",
-          headers: { "Accept": "application/json" }
+          headers: { "Accept": "application/json" },
+          credentials: "same-origin"
         }
       );
 
@@ -833,7 +955,9 @@
       const data = await response.json();
 
       renderReviews(
-        Array.isArray(data) ? data : (data.reviews || [])
+        Array.isArray(data)
+          ? data
+          : (data.reviews || [])
       );
 
     } catch (error) {
@@ -898,6 +1022,7 @@
             "Content-Type": "application/json",
             "Accept": "application/json"
           },
+          credentials: "same-origin",
           body: JSON.stringify({
             product_id: state.product.id,
             customer_name: name,
@@ -929,7 +1054,8 @@
 
         setMessage(
           message,
-          error.message || "Unable to submit your review. Please try again.",
+          error.message ||
+            "Unable to submit your review. Please try again.",
           true
         );
 
@@ -942,9 +1068,9 @@
     });
   }
 
-  /* =========================
-     PAGE CONTROLS
-     ========================= */
+  /* =========================================
+     QUANTITY CONTROLS
+     ========================================= */
 
   function setupQuantityControls() {
     $("quantityMinus")?.addEventListener("click", () => {
@@ -968,6 +1094,10 @@
     });
   }
 
+  /* =========================================
+     PURCHASE BUTTONS
+     ========================================= */
+
   function setupPurchaseButtons() {
     $("addToCartButton")?.addEventListener("click", () => {
       if (addProductToCart()) {
@@ -978,6 +1108,10 @@
     $("buyNowButton")?.addEventListener("click", buyNow);
   }
 
+  /* =========================================
+     GALLERY CONTROLS
+     ========================================= */
+
   function setupGallery() {
     $("galleryPrev")?.addEventListener("click", () => {
       moveGallery(-1);
@@ -987,6 +1121,10 @@
       moveGallery(1);
     });
   }
+
+  /* =========================================
+     SHARE PRODUCT
+     ========================================= */
 
   function setupShareButton() {
     $("shareProductButton")?.addEventListener("click", async () => {
@@ -1020,25 +1158,17 @@
     });
   }
 
-  function setupMenuOverlay() {
-    const toggle = $("menuToggle");
-    const overlay = $("menuOverlay");
-    const nav = $("mainNav");
-
-    if (!toggle || !nav) return;
-
-    overlay?.addEventListener("click", () => {
-      toggle.click();
-    });
-  }
+  /* =========================================
+     INITIALISE PAGE
+     ========================================= */
 
   function init() {
+    setupMenu();
     setupQuantityControls();
     setupPurchaseButtons();
     setupGallery();
     setupShareButton();
     setupReviewForm();
-    setupMenuOverlay();
 
     loadStore();
   }
