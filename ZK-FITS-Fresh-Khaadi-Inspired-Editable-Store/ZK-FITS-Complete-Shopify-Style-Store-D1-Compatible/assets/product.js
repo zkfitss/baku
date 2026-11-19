@@ -1207,51 +1207,78 @@
   }
 
   /* =========================================
-     GALLERY CONTROLS
+     GALLERY CONTROLS + RELIABLE SWIPE
      ========================================= */
 
   function setupGallery() {
-    $("galleryPrev")?.addEventListener("click", () => {
-      moveGallery(-1);
-    });
+    const previous = $("galleryPrev");
+    const next = $("galleryNext");
+    previous?.addEventListener("click", () => moveGallery(-1));
+    next?.addEventListener("click", () => moveGallery(1));
 
-    $("galleryNext")?.addEventListener("click", () => {
-      moveGallery(1);
-    });
+    const gallery = $("mainProductImage")?.closest(".product-main-image");
+    if (!gallery || gallery.dataset.swipeBound === "1") return;
+    gallery.dataset.swipeBound = "1";
 
-    const gallery = $(".product-main-image");
-    if (gallery && !gallery.dataset.swipeBound) {
-      gallery.dataset.swipeBound = "1";
-      let startX = 0, startY = 0, tracking = false;
+    // Pointer Events handle touch and mouse consistently. Horizontal gestures
+    // change images while vertical page scrolling remains native.
+    let startX = 0;
+    let startY = 0;
+    let activePointer = null;
+    let didSwipe = false;
+
+    gallery.addEventListener("pointerdown", event => {
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      if (event.target.closest(".gallery-control")) return;
+      activePointer = event.pointerId;
+      startX = event.clientX;
+      startY = event.clientY;
+      didSwipe = false;
+    }, { passive: true });
+
+    gallery.addEventListener("pointerup", event => {
+      if (activePointer === null || event.pointerId !== activePointer) return;
+      const dx = event.clientX - startX;
+      const dy = event.clientY - startY;
+      activePointer = null;
+      if (Math.abs(dx) >= 38 && Math.abs(dx) > Math.abs(dy) * 1.15) {
+        didSwipe = true;
+        moveGallery(dx < 0 ? 1 : -1);
+      }
+    }, { passive: true });
+
+    const clearPointer = () => { activePointer = null; };
+    gallery.addEventListener("pointercancel", clearPointer, { passive: true });
+    gallery.addEventListener("lostpointercapture", clearPointer, { passive: true });
+
+    // Prevent a click from being interpreted as a zoom/tap after a swipe.
+    gallery.addEventListener("click", event => {
+      if (didSwipe) {
+        event.preventDefault();
+        event.stopPropagation();
+        didSwipe = false;
+      }
+    }, true);
+
+    // Legacy fallback for browsers without Pointer Events.
+    if (!window.PointerEvent) {
+      let touchX = 0, touchY = 0, touching = false;
       gallery.addEventListener("touchstart", event => {
-        if (!event.touches || event.touches.length !== 1) return;
-        startX = event.touches[0].clientX;
-        startY = event.touches[0].clientY;
-        tracking = true;
+        if (event.touches.length !== 1) return;
+        touchX = event.touches[0].clientX;
+        touchY = event.touches[0].clientY;
+        touching = true;
       }, { passive: true });
       gallery.addEventListener("touchend", event => {
-        if (!tracking || !event.changedTouches?.length) return;
-        tracking = false;
-        const dx = event.changedTouches[0].clientX - startX;
-        const dy = event.changedTouches[0].clientY - startY;
-        if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.2) moveGallery(dx < 0 ? 1 : -1);
+        if (!touching || !event.changedTouches.length) return;
+        touching = false;
+        const dx = event.changedTouches[0].clientX - touchX;
+        const dy = event.changedTouches[0].clientY - touchY;
+        if (Math.abs(dx) >= 38 && Math.abs(dx) > Math.abs(dy) * 1.15) {
+          moveGallery(dx < 0 ? 1 : -1);
+        }
       }, { passive: true });
-      gallery.addEventListener("touchcancel", () => { tracking = false; }, { passive: true });
-      const image = $("mainProductImage");
-      if (image) {
-        let lastTap=0, zoomed=false, pinchStart=0, pinchScale=1, mouseX=0, mouseDown=false;
-        image.style.transformOrigin="center center";
-        image.style.transition="transform .18s ease";
-        image.style.cursor="zoom-in";
-        const applyZoom = scale => { pinchScale=Math.max(1,Math.min(3,scale)); zoomed=pinchScale>1.02; image.style.transform=`scale(${pinchScale})`; image.style.cursor=zoomed?"zoom-out":"zoom-in"; };
-        image.addEventListener("click",()=>{ const now=Date.now(); if(now-lastTap<320) applyZoom(zoomed?1:2); lastTap=now; });
-        gallery.addEventListener("touchstart",e=>{ if(e.touches.length===2){ pinchStart=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY); } },{passive:true});
-        gallery.addEventListener("touchmove",e=>{ if(e.touches.length===2 && pinchStart){ const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY); applyZoom(d/pinchStart); } },{passive:true});
-        gallery.addEventListener("touchend",e=>{ if(e.touches.length<2) pinchStart=0; },{passive:true});
-        gallery.addEventListener("pointerdown",e=>{if(e.pointerType==="mouse"){mouseX=e.clientX;mouseDown=true;}});
-        gallery.addEventListener("pointerup",e=>{if(!mouseDown||e.pointerType!=="mouse")return;mouseDown=false;const dx=e.clientX-mouseX;if(Math.abs(dx)>45)moveGallery(dx<0?1:-1);});
-        gallery.addEventListener("pointerleave",()=>{mouseDown=false;});
-      }
+      gallery.addEventListener("touchcancel", () => { touching = false; }, { passive: true });
     }
   }
 

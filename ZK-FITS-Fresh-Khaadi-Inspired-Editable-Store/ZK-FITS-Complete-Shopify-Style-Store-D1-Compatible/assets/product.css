@@ -955,3 +955,66 @@ body.product-page {
 #reviewForm textarea { min-height:130px; resize:vertical; }
 #submitReviewButton { min-height:48px; padding:12px 22px; border-radius:9px; }
 @media(max-width:650px) { .reviews-section { margin:48px auto; } .reviews-list { grid-template-columns:1fr; } #reviewForm { grid-template-columns:1fr; gap:6px; } #reviewForm label,#reviewForm input,#reviewForm select,#reviewForm textarea { grid-column:1/-1; } .reviews-average { width:100%; } }
+
+
+/* ZK FITS gallery fix: fixed image stage, stable image sizing and responsive controls. */
+.product-main-image {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: min(100%, 608px) !important;
+  aspect-ratio: 4 / 5 !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: 760px !important;
+  margin-inline: auto !important;
+  overflow: hidden !important;
+  background: #f8f6f3 !important;
+  touch-action: pan-y pinch-zoom !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -webkit-user-drag: none !important;
+}
+#mainProductImage {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  object-fit: contain !important;
+  object-position: center center !important;
+  flex: 0 0 100% !important;
+  transform: none !important;
+  transition: none !important;
+  -webkit-user-drag: none !important;
+  user-select: none !important;
+  pointer-events: auto !important;
+}
+.gallery-control {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+@media (max-width: 760px) {
+  .product-main-image {
+    width: 100% !important;
+    max-width: 608px !important;
+    aspect-ratio: 4 / 5 !important;
+    height: auto !important;
+    max-height: none !important;
+    margin-inline: auto !important;
+  }
+  .product-main-image .gallery-control,
+  .gallery-control {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+}
+@media (min-width: 761px) {
+  .product-main-image .gallery-control { display: flex !important; }
+}
