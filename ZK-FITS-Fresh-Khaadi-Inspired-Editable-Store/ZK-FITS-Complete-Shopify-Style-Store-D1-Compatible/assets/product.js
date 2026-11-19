@@ -142,14 +142,12 @@
   }
 
   function getCurrentStock() {
+    const variant = getAvailableVariant();
+
     if (state.variants.length) {
-      const matchingInStock = state.variants.find(item =>
-        (!state.selectedSize || String(item.size || "") === state.selectedSize) &&
-        (!state.selectedColor || String(item.color || "") === state.selectedColor) &&
-        Number(item.stock) > 0
-      );
-      return matchingInStock ? Number(matchingInStock.stock) : 0;
+      return variant ? variant.stock : 0;
     }
+
     return Math.max(0, Number(state.product?.stock || 0));
   }
 
@@ -462,8 +460,10 @@
     const buyButton = $("buyNowButton");
 
     if (availability) {
-      if (!hasSelection && stock > 0) {
-        availability.textContent = "Size and colour are optional. You can continue without selecting.";
+      if (!hasSelection) {
+        availability.textContent =
+          "Please select your size and colour.";
+
         availability.className = "product-availability";
 
       } else if (stock <= 0) {
@@ -482,7 +482,7 @@
       }
     }
 
-    const disabled = stock <= 0;
+    const disabled = !hasSelection || stock <= 0;
 
     if (addButton) addButton.disabled = disabled;
     if (buyButton) buyButton.disabled = disabled;
@@ -808,31 +808,22 @@
       return false;
     }
 
+    if (
+      (state.sizes.length && !state.selectedSize) ||
+      (state.colors.length && !state.selectedColor)
+    ) {
+      showToast("Please select size and colour first.");
+      return false;
+    }
+
     if (state.quantity > stock) {
       showToast("Selected quantity is not available.");
       return false;
     }
 
     const cart = readCart();
-    let size = state.selectedSize;
-    let color = state.selectedColor;
-    // If the shopper skips variant choices, use the first in-stock combination
-    // so inventory remains accurate and the cart/order contains a real variant.
-    if (state.variants.length && (!size || !color)) {
-      const matchingVariant = state.variants.find(variant =>
-        Number(variant.stock) > 0 &&
-        (!size || String(variant.size || "") === size) &&
-        (!color || String(variant.color || "") === color)
-      );
-      if (matchingVariant) {
-        size = size || matchingVariant.size || "";
-        color = color || matchingVariant.color || "";
-        state.selectedSize = size;
-        state.selectedColor = color;
-        renderVariants();
-        showToast("An available size/colour has been selected for your order.");
-      }
-    }
+    const size = state.selectedSize;
+    const color = state.selectedColor;
 
     const existing = cart.find(item =>
       String(item.id) === String(product.id) &&
@@ -891,22 +882,11 @@
   }
 
   function buyNow() {
-    const button = $("buyNowButton");
     if (!addProductToCart()) return;
-    if (button) {
-      button.classList.add("is-pressed");
-      button.setAttribute("aria-busy", "true");
-      button.textContent = "PROCESSING...";
-    }
+
     openExistingCart();
-    window.setTimeout(() => {
-      $("checkoutButton")?.click();
-      if (button) {
-        button.classList.remove("is-pressed");
-        button.removeAttribute("aria-busy");
-        button.textContent = "BUY IT NOW";
-      }
-    }, 180);
+
+    $("checkoutButton")?.click();
   }
 
   /* =========================================
@@ -1207,78 +1187,36 @@
   }
 
   /* =========================================
-     GALLERY CONTROLS + RELIABLE SWIPE
+     GALLERY CONTROLS
      ========================================= */
 
   function setupGallery() {
-    const previous = $("galleryPrev");
-    const next = $("galleryNext");
-    previous?.addEventListener("click", () => moveGallery(-1));
-    next?.addEventListener("click", () => moveGallery(1));
+    $("galleryPrev")?.addEventListener("click", () => {
+      moveGallery(-1);
+    });
 
-    const gallery = $("mainProductImage")?.closest(".product-main-image");
-    if (!gallery || gallery.dataset.swipeBound === "1") return;
-    gallery.dataset.swipeBound = "1";
+    $("galleryNext")?.addEventListener("click", () => {
+      moveGallery(1);
+    });
 
-    // Pointer Events handle touch and mouse consistently. Horizontal gestures
-    // change images while vertical page scrolling remains native.
-    let startX = 0;
-    let startY = 0;
-    let activePointer = null;
-    let didSwipe = false;
-
-    gallery.addEventListener("pointerdown", event => {
-      if (event.pointerType === "mouse" && event.button !== 0) return;
-      if (event.target.closest(".gallery-control")) return;
-      activePointer = event.pointerId;
-      startX = event.clientX;
-      startY = event.clientY;
-      didSwipe = false;
-    }, { passive: true });
-
-    gallery.addEventListener("pointerup", event => {
-      if (activePointer === null || event.pointerId !== activePointer) return;
-      const dx = event.clientX - startX;
-      const dy = event.clientY - startY;
-      activePointer = null;
-      if (Math.abs(dx) >= 38 && Math.abs(dx) > Math.abs(dy) * 1.15) {
-        didSwipe = true;
-        moveGallery(dx < 0 ? 1 : -1);
-      }
-    }, { passive: true });
-
-    const clearPointer = () => { activePointer = null; };
-    gallery.addEventListener("pointercancel", clearPointer, { passive: true });
-    gallery.addEventListener("lostpointercapture", clearPointer, { passive: true });
-
-    // Prevent a click from being interpreted as a zoom/tap after a swipe.
-    gallery.addEventListener("click", event => {
-      if (didSwipe) {
-        event.preventDefault();
-        event.stopPropagation();
-        didSwipe = false;
-      }
-    }, true);
-
-    // Legacy fallback for browsers without Pointer Events.
-    if (!window.PointerEvent) {
-      let touchX = 0, touchY = 0, touching = false;
+    const gallery = $(".product-main-image");
+    if (gallery && !gallery.dataset.swipeBound) {
+      gallery.dataset.swipeBound = "1";
+      let startX = 0, startY = 0, tracking = false;
       gallery.addEventListener("touchstart", event => {
-        if (event.touches.length !== 1) return;
-        touchX = event.touches[0].clientX;
-        touchY = event.touches[0].clientY;
-        touching = true;
+        if (!event.touches || event.touches.length !== 1) return;
+        startX = event.touches[0].clientX;
+        startY = event.touches[0].clientY;
+        tracking = true;
       }, { passive: true });
       gallery.addEventListener("touchend", event => {
-        if (!touching || !event.changedTouches.length) return;
-        touching = false;
-        const dx = event.changedTouches[0].clientX - touchX;
-        const dy = event.changedTouches[0].clientY - touchY;
-        if (Math.abs(dx) >= 38 && Math.abs(dx) > Math.abs(dy) * 1.15) {
-          moveGallery(dx < 0 ? 1 : -1);
-        }
+        if (!tracking || !event.changedTouches?.length) return;
+        tracking = false;
+        const dx = event.changedTouches[0].clientX - startX;
+        const dy = event.changedTouches[0].clientY - startY;
+        if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.2) moveGallery(dx < 0 ? 1 : -1);
       }, { passive: true });
-      gallery.addEventListener("touchcancel", () => { touching = false; }, { passive: true });
+      gallery.addEventListener("touchcancel", () => { tracking = false; }, { passive: true });
     }
   }
 

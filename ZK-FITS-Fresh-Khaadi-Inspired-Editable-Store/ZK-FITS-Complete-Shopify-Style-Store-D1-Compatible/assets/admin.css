@@ -843,14 +843,3 @@ textarea {
 .admin-image-thumb { position:relative; display:inline-flex; margin:3px; }
 .admin-image-thumb img { width:68px; height:78px; object-fit:cover; border-radius:7px; display:block; }
 .admin-image-thumb button { position:absolute; top:-6px; right:-6px; width:21px; height:21px; padding:0; border:0; border-radius:50%; background:#a52d2d; color:#fff; font-weight:700; line-height:21px; cursor:pointer; }
-
-/* Admin product image ordering */
-.ordered-product-images { display:grid; grid-template-columns:repeat(auto-fill,minmax(125px,1fr)); gap:12px; margin-top:14px; }
-.ordered-image-item { position:relative; min-width:0; padding:8px; border:1px solid var(--line); border-radius:12px; background:#fff; cursor:grab; }
-.ordered-image-item:active { cursor:grabbing; }
-.ordered-image-item img { display:block; width:100%; height:130px; object-fit:contain; background:#f8f6f2; border-radius:8px; }
-.image-order-label { display:block; margin:7px 0; color:var(--muted); font-size:10px; font-weight:800; letter-spacing:.08em; }
-.image-order-actions { display:flex; gap:5px; }
-.image-order-actions button { flex:1; min-height:32px; border:1px solid var(--line); border-radius:7px; background:#f8f6f2; color:var(--ink); cursor:pointer; }
-.image-order-actions button:last-child { color:#b64242; }
-.image-order-actions button:disabled { opacity:.35; cursor:not-allowed; }
