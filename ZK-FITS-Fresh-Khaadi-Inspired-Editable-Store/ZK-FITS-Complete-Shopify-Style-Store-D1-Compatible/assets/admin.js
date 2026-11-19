@@ -850,6 +850,7 @@
     },
 
     seoImageUpload: { key: "seo_image", preview: "seoImagePreview", folder: "branding" },
+    faviconUpload: { key: "favicon_url", preview: "faviconPreview", folder: "branding" },
     heroMobileUpload: { key: "hero_mobile_image", preview: "heroMobilePreview", folder: "banners" },
     womenMobileUpload: { key: "women_mobile_banner", preview: "womenMobilePreview", folder: "banners" },
     girlsMobileUpload: { key: "girls_mobile_banner", preview: "girlsMobilePreview", folder: "banners" },

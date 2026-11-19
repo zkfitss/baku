@@ -248,8 +248,28 @@
     });
   }
 
+  function updateWebsiteFavicon() {
+    const imageUrl = setting("favicon_url");
+    if (!imageUrl) return;
+    const links = [
+      ["icon", "image/png"],
+      ["apple-touch-icon", "image/png"]
+    ];
+    links.forEach(([rel, type]) => {
+      let link = document.head.querySelector(`link[rel="${rel}"]`);
+      if (!link) {
+        link = document.createElement("link");
+        link.rel = rel;
+        document.head.appendChild(link);
+      }
+      link.href = imageUrl;
+      link.type = type;
+    });
+  }
+
   function applySettings() {
     updateSearchPreviewImage();
+    updateWebsiteFavicon();
     const storeName = setting("store_name", "ZK FITS");
 
     setText("#storeName", storeName);
