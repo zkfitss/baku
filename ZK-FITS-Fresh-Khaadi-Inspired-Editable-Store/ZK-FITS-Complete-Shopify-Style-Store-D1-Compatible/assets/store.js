@@ -229,7 +229,27 @@
     if (placeholder) placeholder.hidden = true;
   }
 
+  function updateSearchPreviewImage() {
+    const imageUrl = setting("seo_image");
+    if (!imageUrl) return;
+
+    const tags = [
+      ["property", "og:image"],
+      ["name", "twitter:image"]
+    ];
+    tags.forEach(([attribute, name]) => {
+      let meta = document.head.querySelector(`meta[${attribute}="${name}"]`);
+      if (!meta) {
+        meta = document.createElement("meta");
+        meta.setAttribute(attribute, name);
+        document.head.appendChild(meta);
+      }
+      meta.content = imageUrl;
+    });
+  }
+
   function applySettings() {
+    updateSearchPreviewImage();
     const storeName = setting("store_name", "ZK FITS");
 
     setText("#storeName", storeName);
