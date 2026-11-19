@@ -524,16 +524,24 @@
   function renderProductImagesPreview() {
     const preview = $("#productImagesPreview");
     if (!preview) return;
-    preview.innerHTML = editingProductImages.map((url, index) => `<span class="admin-image-thumb"><img src="${escapeHTML(url)}" alt="Product image ${index + 1}"><button type="button" data-product-image-remove="${index}" aria-label="Remove image">×</button></span>`).join("");
+    preview.classList.add("ordered-product-images");
+    preview.innerHTML = editingProductImages.map((url, index) => `<div class="ordered-image-item" draggable="true" data-product-image-index="${index}"><img src="${escapeHTML(url)}" alt="Product image ${index + 1}"><span class="image-order-label">${index===0?"COVER PHOTO":`IMAGE ${index+1}`}</span><div class="image-order-actions"><button type="button" data-image-up="${index}" ${index===0?"disabled":""} aria-label="Move image up">↑</button><button type="button" data-image-down="${index}" ${index===editingProductImages.length-1?"disabled":""} aria-label="Move image down">↓</button><button type="button" data-product-image-remove="${index}" aria-label="Remove image">×</button></div></div>`).join("");
   }
 
   $("#productImagesPreview")?.addEventListener("click", event => {
-    const button = event.target.closest("[data-product-image-remove]");
-    if (!button) return;
-    editingProductImages.splice(Number(button.dataset.productImageRemove), 1);
-    editingProductImage = editingProductImages[0] || "";
-    renderProductImagesPreview();
+    const remove = event.target.closest("[data-product-image-remove]");
+    const up = event.target.closest("[data-image-up]");
+    const down = event.target.closest("[data-image-down]");
+    if (remove) editingProductImages.splice(Number(remove.dataset.productImageRemove),1);
+    else if (up) { const i=Number(up.dataset.imageUp); if(i>0) [editingProductImages[i-1],editingProductImages[i]]=[editingProductImages[i],editingProductImages[i-1]]; }
+    else if (down) { const i=Number(down.dataset.imageDown); if(i<editingProductImages.length-1) [editingProductImages[i+1],editingProductImages[i]]=[editingProductImages[i],editingProductImages[i+1]]; }
+    else return;
+    editingProductImage=editingProductImages[0]||""; renderProductImagesPreview();
   });
+  let draggedProductImage=null;
+  $("#productImagesPreview")?.addEventListener("dragstart",e=>{const item=e.target.closest("[data-product-image-index]");if(!item)return;draggedProductImage=Number(item.dataset.productImageIndex);e.dataTransfer.effectAllowed="move";});
+  $("#productImagesPreview")?.addEventListener("dragover",e=>{if(e.target.closest("[data-product-image-index]"))e.preventDefault();});
+  $("#productImagesPreview")?.addEventListener("drop",e=>{const item=e.target.closest("[data-product-image-index]");if(!item||draggedProductImage===null)return;e.preventDefault();const target=Number(item.dataset.productImageIndex);const [moved]=editingProductImages.splice(draggedProductImage,1);editingProductImages.splice(target,0,moved);draggedProductImage=null;editingProductImage=editingProductImages[0]||"";renderProductImagesPreview();});
 
   $("#productImages")?.addEventListener("change", async event => {
     const files = [...(event.target.files || [])];
@@ -840,12 +848,13 @@
       preview: "girlsPreview",
       folder: "banners"
     },
+
+    seoImageUpload: { key: "seo_image", preview: "seoImagePreview", folder: "branding" },
     heroMobileUpload: { key: "hero_mobile_image", preview: "heroMobilePreview", folder: "banners" },
     womenMobileUpload: { key: "women_mobile_banner", preview: "womenMobilePreview", folder: "banners" },
     girlsMobileUpload: { key: "girls_mobile_banner", preview: "girlsMobilePreview", folder: "banners" },
     promoUpload: { key: "promo_image", preview: "promoPreview", folder: "banners" },
-    promoMobileUpload: { key: "promo_mobile_image", preview: "promoMobilePreview", folder: "banners" },
-    faviconUpload: { key: "favicon_url", preview: "faviconPreview", folder: "branding" }
+    promoMobileUpload: { key: "promo_mobile_image", preview: "promoMobilePreview", folder: "banners" }
   };
 
   function populateSettings() {
