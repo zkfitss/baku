@@ -70,8 +70,9 @@
   function getProductImages(product) {
     const images = [];
 
-    const extraImages = parseJSON(product.images, []);
-    if (Array.isArray(extraImages)) images.push(...extraImages);
+    if (Array.isArray(product.images)) {
+      images.push(...product.images);
+    }
 
     if (product.image) {
       images.unshift(product.image);
@@ -80,21 +81,18 @@
     return [...new Set(images.filter(Boolean))];
   }
 
-  function normalizeList(value, kind = "generic") {
-    const parsed = parseJSON(value, null);
-    if (Array.isArray(parsed)) {
-      return parsed.map(item => {
-        if (typeof item === "object" && item !== null) return String(item.name || item.value || item.label || "");
-        return String(item);
-      }).map(item => item.trim()).filter(Boolean);
-    }
-    if (typeof value === "string" && value.trim()) {
-      const raw = value.trim();
-      if (raw.includes(",")) return raw.split(",").map(item => item.trim()).filter(Boolean);
-      if (kind === "sizes") return raw.split(/\s+/).filter(Boolean);
-      return [raw];
-    }
-    return [];
+  function normalizeList(value) {
+    const parsed = parseJSON(value, []);
+
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed.map(item => {
+      if (typeof item === "object" && item !== null) {
+        return String(item.name || item.value || item.label || "");
+      }
+
+      return String(item);
+    }).filter(Boolean);
   }
 
   function normalizeVariants(value) {
@@ -104,8 +102,7 @@
       return parsed.map(item => ({
         size: String(item.size || ""),
         color: String(item.color || item.colour || ""),
-        stock: Math.max(0, Number(item.stock || 0)),
-        images: Array.isArray(item.images) ? item.images.filter(Boolean) : []
+        stock: Math.max(0, Number(item.stock || 0))
       }));
     }
 
@@ -142,14 +139,12 @@
   }
 
   function getCurrentStock() {
+    const variant = getAvailableVariant();
+
     if (state.variants.length) {
-      const matchingInStock = state.variants.find(item =>
-        (!state.selectedSize || String(item.size || "") === state.selectedSize) &&
-        (!state.selectedColor || String(item.color || "") === state.selectedColor) &&
-        Number(item.stock) > 0
-      );
-      return matchingInStock ? Number(matchingInStock.stock) : 0;
+      return variant ? variant.stock : 0;
     }
+
     return Math.max(0, Number(state.product?.stock || 0));
   }
 
@@ -204,9 +199,9 @@
      ========================================= */
 
   function setupMenu() {
-    const toggle = $("#menuToggle");
-    const nav = $("#mainNav");
-    const overlay = $("#menuOverlay");
+    const toggle = $("menuToggle");
+    const nav = $("mainNav");
+    const overlay = $("menuOverlay");
 
     if (!toggle || !nav) return;
 
@@ -360,85 +355,83 @@
     const container = $("productVariants");
     if (!container) return;
 
-    const available = state.variants.filter(v => Number(v.stock) > 0);
-    const sizes = state.sizes.length
-      ? state.sizes
-      : [...new Set(available.map(v => v.size).filter(Boolean))];
-    const allColors = state.colors.length
-      ? state.colors
-      : [...new Set(available.map(v => v.color).filter(Boolean))];
-
-    const colorsForSize = state.selectedSize
-      ? [...new Set(state.variants.filter(v => v.size === state.selectedSize).map(v => v.color).filter(Boolean))]
-      : allColors;
-
     const parts = [];
-    if (sizes.length) {
+
+    if (state.sizes.length) {
       parts.push(`
         <div class="variant-group">
           <label class="variant-label">Select Size</label>
-          <div class="variant-options size-options">
-            ${sizes.map(size => {
-              const unavailable = state.variants.length && !available.some(v => v.size === size);
-              return `<button type="button" class="variant-option ${state.selectedSize === size ? "selected" : ""}" data-size="${escapeHTML(size)}" ${unavailable ? "disabled" : ""}>${escapeHTML(size)}</button>`;
+
+          <div class="variant-options">
+            ${state.sizes.map(size => {
+              const unavailable = state.variants.length &&
+                !state.variants.some(v =>
+                  v.size === size &&
+                  (!state.selectedColor || v.color === state.selectedColor) &&
+                  v.stock > 0
+                );
+
+              return `
+                <button
+                  type="button"
+                  class="variant-option ${state.selectedSize === size ? "selected" : ""}"
+                  data-size="${escapeHTML(size)}"
+                  ${unavailable ? "disabled" : ""}>
+                  ${escapeHTML(size)}
+                </button>
+              `;
             }).join("")}
           </div>
-        </div>`);
+        </div>
+      `);
     }
 
-    if (allColors.length) {
+    if (state.colors.length) {
       parts.push(`
         <div class="variant-group">
-          <label class="variant-label">Select Colour <span class="selected-colour-name">${escapeHTML(state.selectedColor || "")}</span></label>
-          <div class="variant-options color-options">
-            ${colorsForSize.map(color => {
-              const unavailable = state.variants.length && !available.some(v => v.color === color && (!state.selectedSize || v.size === state.selectedSize));
-              const swatch = colorToCSS(color);
-              return `<button type="button" class="variant-option color-option ${state.selectedColor === color ? "selected" : ""}" data-color="${escapeHTML(color)}" ${unavailable ? "disabled" : ""}><span class="colour-swatch" style="--swatch:${escapeHTML(swatch)}"></span><span>${escapeHTML(color)}</span></button>`;
+          <label class="variant-label">Select Colour</label>
+
+          <div class="variant-options">
+            ${state.colors.map(color => {
+              const unavailable = state.variants.length &&
+                !state.variants.some(v =>
+                  v.color === color &&
+                  (!state.selectedSize || v.size === state.selectedSize) &&
+                  v.stock > 0
+                );
+
+              return `
+                <button
+                  type="button"
+                  class="variant-option ${state.selectedColor === color ? "selected" : ""}"
+                  data-color="${escapeHTML(color)}"
+                  ${unavailable ? "disabled" : ""}>
+                  ${escapeHTML(color)}
+                </button>
+              `;
             }).join("")}
           </div>
-        </div>`);
+        </div>
+      `);
     }
 
     container.innerHTML = parts.join("");
-    container.querySelectorAll("[data-size]").forEach(button => button.addEventListener("click", () => {
-      state.selectedSize = button.dataset.size;
-      if (state.selectedColor && state.variants.length && !state.variants.some(v => v.size === state.selectedSize && v.color === state.selectedColor && v.stock > 0)) state.selectedColor = "";
-      updateVariantUI();
-    }));
-    container.querySelectorAll("[data-color]").forEach(button => button.addEventListener("click", () => {
-      state.selectedColor = button.dataset.color;
-      state.imageIndex = 0;
-      updateSelectedVariantImages();
-      updateVariantUI();
-    }));
-    updateSelectedVariantImages();
+
+    container.querySelectorAll("[data-size]").forEach(button => {
+      button.addEventListener("click", () => {
+        state.selectedSize = button.dataset.size;
+        updateVariantUI();
+      });
+    });
+
+    container.querySelectorAll("[data-color]").forEach(button => {
+      button.addEventListener("click", () => {
+        state.selectedColor = button.dataset.color;
+        updateVariantUI();
+      });
+    });
+
     updateAvailability();
-  }
-
-  function colorToCSS(value) {
-    const key = String(value || "").toLowerCase().replace(/[^a-z]/g, "");
-    const known = { black:"#171717", white:"#ffffff", red:"#d62828", navy:"#172b57", navyblue:"#172b57", maroon:"#701b35", pink:"#efa4bd", green:"#28734b", olive:"#78823c", beige:"#d8c4a5", brown:"#795548", purple:"#754b91", grey:"#888888", gray:"#888888", yellow:"#f1c40f", orange:"#e67e22" };
-    return known[key] || "#b8aaa0";
-  }
-
-  function updateSelectedVariantImages() {
-    if (!state.product) return;
-    const match = state.variants.find(v =>
-      v.size === state.selectedSize && v.color === state.selectedColor
-    );
-    const sameColour = state.variants.find(v =>
-      v.color.toLowerCase() === String(state.selectedColor || "").toLowerCase() &&
-      Array.isArray(v.images) && v.images.length
-    );
-    const chosen = match && match.images && match.images.length
-      ? match.images
-      : sameColour && sameColour.images.length
-        ? sameColour.images
-        : getProductImages(state.product);
-    state.images = chosen;
-    state.imageIndex = Math.min(state.imageIndex, Math.max(0, chosen.length - 1));
-    renderImages();
   }
 
   function updateVariantUI() {
@@ -462,8 +455,10 @@
     const buyButton = $("buyNowButton");
 
     if (availability) {
-      if (!hasSelection && stock > 0) {
-        availability.textContent = "Size and colour are optional. You can continue without selecting.";
+      if (!hasSelection) {
+        availability.textContent =
+          "Please select your size and colour.";
+
         availability.className = "product-availability";
 
       } else if (stock <= 0) {
@@ -482,7 +477,7 @@
       }
     }
 
-    const disabled = stock <= 0;
+    const disabled = !hasSelection || stock <= 0;
 
     if (addButton) addButton.disabled = disabled;
     if (buyButton) buyButton.disabled = disabled;
@@ -599,71 +594,6 @@
     }).join("");
   }
 
-  function applyProductPageSettings() {
-    const settings = state.settings || {};
-    const name = settings.store_name || "ZK FITS";
-    const logo = settings.logo || "";
-    document.querySelectorAll(".footer-brand").forEach(el => el.textContent = name);
-    const storeName = $("storeName");
-    const storeLogo = $("storeLogo");
-    if (storeName) { storeName.textContent = name; storeName.hidden = !!logo; }
-    if (storeLogo && logo) { storeLogo.src = logo; storeLogo.hidden = false; }
-    if ($("announcementText")) $("announcementText").textContent = settings.announcement || "Welcome to ZK FITS";
-    if ($("footerText")) $("footerText").textContent = settings.footer_text || "Discover elegant Pakistani fashion for women and girls.";
-    if ($("footerPhone")) $("footerPhone").textContent = settings.phone || "Customer Support";
-    if ($("footerEmail")) $("footerEmail").textContent = settings.email || "";
-    if ($("footerAddress")) $("footerAddress").textContent = settings.address || "";
-    if ($("currentYear")) $("currentYear").textContent = new Date().getFullYear();
-    const root = document.documentElement.style;
-    const vars = { background_color:"--store-bg", text_color:"--store-text", accent_color:"--store-accent", header_color:"--store-header", footer_color:"--store-footer", footer_text_color:"--store-footer-text" };
-    Object.entries(vars).forEach(([key, css]) => { if (settings[key]) root.setProperty(css, settings[key]); });
-    if (settings.header_text_color) root.setProperty("--store-header-text", settings.header_text_color);
-    if (settings.header_height) root.setProperty("--header-height", `${Number(settings.header_height)}px`);
-    if (settings.header_mobile_height) root.setProperty("--header-mobile-height", `${Number(settings.header_mobile_height)}px`);
-    if (settings.header_font_size) root.setProperty("--header-font-size", `${Number(settings.header_font_size)}px`);
-    if (settings.header_mobile_font_size) root.setProperty("--header-mobile-font-size", `${Number(settings.header_mobile_font_size)}px`);
-    if (settings.header_font_family) root.setProperty("--header-font-family", settings.header_font_family);
-    if (settings.header_font_weight) root.setProperty("--header-font-weight", settings.header_font_weight);
-    if (settings.footer_font_size) root.setProperty("--footer-font-size", `${Number(settings.footer_font_size)}px`);
-    if (settings.footer_font_family) root.setProperty("--footer-font-family", settings.footer_font_family);
-    if (settings.footer_font_weight) root.setProperty("--footer-font-weight", settings.footer_font_weight);
-    $("siteHeader")?.classList.toggle("header-no-animation", settings.header_animation === "0");
-    if ($("copyrightText")) $("copyrightText").textContent = settings.copyright_text || "All Rights Reserved";
-    const links = { socialInstagram:settings.instagram, socialFacebook:settings.facebook, socialTikTok:settings.tiktok, socialWhatsApp:settings.whatsapp_social || settings.whatsapp };
-    Object.entries(links).forEach(([id,url]) => { const a = $(id); if (a && url) { a.href = url.startsWith("http") ? url : `https://wa.me/${url.replace(/[^0-9]/g, "")}`; a.hidden = false; } });
-    if ($("shippingInformation")) {
-      const fee = Number(settings.shipping_fee || 250);
-      const threshold = Number(settings.free_shipping_threshold || 5000);
-      $("shippingInformation").textContent = `Standard delivery: PKR ${fee.toLocaleString("en-PK")}. Free delivery on orders above PKR ${threshold.toLocaleString("en-PK")}.`;
-    }
-    const paymentInfo = $("paymentInformation");
-    if (paymentInfo) {
-      const lines = ["Cash on Delivery available", settings.bank_transfer_details ? `Bank Transfer: ${settings.bank_transfer_details}` : "Bank Transfer available", settings.easypaisa_account ? `Easypaisa: ${settings.easypaisa_account}` : "Easypaisa available", settings.jazzcash_account ? `JazzCash: ${settings.jazzcash_account}` : "JazzCash available"];
-      paymentInfo.textContent = lines.join("\n");
-      paymentInfo.style.whiteSpace = "pre-line";
-    }
-    const footerMenu = $("footerMenu");
-    if (footerMenu && settings.footer_links) {
-      let footerLinks = [];
-      try { footerLinks = JSON.parse(settings.footer_links); } catch { footerLinks = String(settings.footer_links).split("\n").map(line => { const [label,url] = line.split("|"); return {label,url}; }); }
-      if (Array.isArray(footerLinks) && footerLinks.length) footerMenu.innerHTML = footerLinks.filter(x => x && x.label && x.url).map(x => `<a href="${escapeHTML(x.url)}">${escapeHTML(x.label)}</a>`).join("");
-    }
-    const menu = $("mainNav");
-    if (menu && settings.menu_links) {
-      let links = [];
-      try { links = JSON.parse(settings.menu_links); } catch { links = String(settings.menu_links).split("\n").map(line => { const [label,url] = line.split("|"); return {label,url}; }); }
-      if (Array.isArray(links) && links.length) menu.innerHTML = links
-        .filter(x => x && (x.label || x.title) && (x.url || x.href) && !String(x.url || x.href).includes("return-policy"))
-        .map(x => {
-          const label = String(x.label || x.title).trim();
-          const rawUrl = String(x.url || x.href).trim();
-          const url = rawUrl.startsWith("#") ? `/${rawUrl}` : rawUrl;
-          if (!label || !url || /^\s*javascript:/i.test(url)) return "";
-          return `<a href="${escapeHTML(url)}">${escapeHTML(label)}</a>`;
-        }).join("");
-    }
-  }
-
   /* =========================================
      RENDER PRODUCT PAGE
      ========================================= */
@@ -672,11 +602,9 @@
     state.product = product;
     state.images = getProductImages(product);
     state.imageIndex = 0;
+    state.sizes = normalizeList(product.sizes);
+    state.colors = normalizeList(product.colors);
     state.variants = normalizeVariants(product.variants);
-    state.sizes = normalizeList(product.sizes, "sizes");
-    state.colors = normalizeList(product.colors, "colors");
-    if (!state.sizes.length) state.sizes = [...new Set(state.variants.map(v => v.size).filter(Boolean))];
-    if (!state.colors.length) state.colors = [...new Set(state.variants.map(v => v.color).filter(Boolean))];
     state.selectedSize = "";
     state.selectedColor = "";
     state.quantity = 1;
@@ -699,7 +627,8 @@
 
     if ($("fullProductDetails")) {
       $("fullProductDetails").textContent =
-        product.description || "Please contact us for further product details.";
+        product.description ||
+        "Please contact us for further product details.";
     }
 
     renderPrice();
@@ -714,12 +643,6 @@
 
     updateAvailability();
     loadReviews();
-    const requestedAction = new URLSearchParams(location.search).get("action");
-    if (requestedAction === "cart" || requestedAction === "buy") {
-      window.setTimeout(() => {
-        $("#productVariants")?.scrollIntoView({ behavior: "smooth", block: "center" });
-      }, 250);
-    }
   }
 
   /* =========================================
@@ -752,7 +675,6 @@
         : [];
 
       state.settings = data.settings || {};
-      applyProductPageSettings();
 
       const product = state.products.find(item =>
         String(item.id) === String(id)
@@ -808,31 +730,22 @@
       return false;
     }
 
+    if (
+      (state.sizes.length && !state.selectedSize) ||
+      (state.colors.length && !state.selectedColor)
+    ) {
+      showToast("Please select size and colour first.");
+      return false;
+    }
+
     if (state.quantity > stock) {
       showToast("Selected quantity is not available.");
       return false;
     }
 
     const cart = readCart();
-    let size = state.selectedSize;
-    let color = state.selectedColor;
-    // If the shopper skips variant choices, use the first in-stock combination
-    // so inventory remains accurate and the cart/order contains a real variant.
-    if (state.variants.length && (!size || !color)) {
-      const matchingVariant = state.variants.find(variant =>
-        Number(variant.stock) > 0 &&
-        (!size || String(variant.size || "") === size) &&
-        (!color || String(variant.color || "") === color)
-      );
-      if (matchingVariant) {
-        size = size || matchingVariant.size || "";
-        color = color || matchingVariant.color || "";
-        state.selectedSize = size;
-        state.selectedColor = color;
-        renderVariants();
-        showToast("An available size/colour has been selected for your order.");
-      }
-    }
+    const size = state.selectedSize;
+    const color = state.selectedColor;
 
     const existing = cart.find(item =>
       String(item.id) === String(product.id) &&
@@ -862,7 +775,7 @@
         name: product.name || product.title || "Product",
         title: product.title || product.name || "Product",
         price,
-        image: state.images[0] || product.image || "",
+        image: product.image || state.images[0] || "",
         qty: state.quantity,
         quantity: state.quantity,
         size,
@@ -891,22 +804,11 @@
   }
 
   function buyNow() {
-    const button = $("buyNowButton");
     if (!addProductToCart()) return;
-    if (button) {
-      button.classList.add("is-pressed");
-      button.setAttribute("aria-busy", "true");
-      button.textContent = "PROCESSING...";
-    }
+
     openExistingCart();
-    window.setTimeout(() => {
-      $("checkoutButton")?.click();
-      if (button) {
-        button.classList.remove("is-pressed");
-        button.removeAttribute("aria-busy");
-        button.textContent = "BUY IT NOW";
-      }
-    }, 180);
+
+    $("checkoutButton")?.click();
   }
 
   /* =========================================
@@ -1211,48 +1113,60 @@
      ========================================= */
 
   function setupGallery() {
-    $("galleryPrev")?.addEventListener("click", () => {
+    $("galleryPrev")?.addEventListener("click", event => {
+      event.preventDefault();
       moveGallery(-1);
     });
 
-    $("galleryNext")?.addEventListener("click", () => {
+    $("galleryNext")?.addEventListener("click", event => {
+      event.preventDefault();
       moveGallery(1);
     });
 
     const gallery = $(".product-main-image");
-    if (gallery && !gallery.dataset.swipeBound) {
-      gallery.dataset.swipeBound = "1";
-      let startX = 0, startY = 0, tracking = false;
-      gallery.addEventListener("touchstart", event => {
-        if (!event.touches || event.touches.length !== 1) return;
-        startX = event.touches[0].clientX;
-        startY = event.touches[0].clientY;
-        tracking = true;
-      }, { passive: true });
-      gallery.addEventListener("touchend", event => {
-        if (!tracking || !event.changedTouches?.length) return;
-        tracking = false;
-        const dx = event.changedTouches[0].clientX - startX;
-        const dy = event.changedTouches[0].clientY - startY;
-        if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.2) moveGallery(dx < 0 ? 1 : -1);
-      }, { passive: true });
-      gallery.addEventListener("touchcancel", () => { tracking = false; }, { passive: true });
-      const image = $("mainProductImage");
-      if (image) {
-        let lastTap=0, zoomed=false, pinchStart=0, pinchScale=1, mouseX=0, mouseDown=false;
-        image.style.transformOrigin="center center";
-        image.style.transition="transform .18s ease";
-        image.style.cursor="zoom-in";
-        const applyZoom = scale => { pinchScale=Math.max(1,Math.min(3,scale)); zoomed=pinchScale>1.02; image.style.transform=`scale(${pinchScale})`; image.style.cursor=zoomed?"zoom-out":"zoom-in"; };
-        image.addEventListener("click",()=>{ const now=Date.now(); if(now-lastTap<320) applyZoom(zoomed?1:2); lastTap=now; });
-        gallery.addEventListener("touchstart",e=>{ if(e.touches.length===2){ pinchStart=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY); } },{passive:true});
-        gallery.addEventListener("touchmove",e=>{ if(e.touches.length===2 && pinchStart){ const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY); applyZoom(d/pinchStart); } },{passive:true});
-        gallery.addEventListener("touchend",e=>{ if(e.touches.length<2) pinchStart=0; },{passive:true});
-        gallery.addEventListener("pointerdown",e=>{if(e.pointerType==="mouse"){mouseX=e.clientX;mouseDown=true;}});
-        gallery.addEventListener("pointerup",e=>{if(!mouseDown||e.pointerType!=="mouse")return;mouseDown=false;const dx=e.clientX-mouseX;if(Math.abs(dx)>45)moveGallery(dx<0?1:-1);});
-        gallery.addEventListener("pointerleave",()=>{mouseDown=false;});
+    const image = $("mainProductImage");
+    if (image) {
+      image.draggable = false;
+      image.addEventListener("dragstart", event => event.preventDefault());
+      image.addEventListener("click", event => event.preventDefault());
+    }
+
+    if (!gallery || gallery.dataset.swipeBound) return;
+    gallery.dataset.swipeBound = "1";
+
+    let startX = 0;
+    let startY = 0;
+    let activePointer = null;
+    let moved = false;
+
+    gallery.addEventListener("pointerdown", event => {
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      if (event.target.closest(".gallery-control")) return;
+      if (event.pointerType === "touch" && event.isPrimary === false) return;
+      startX = event.clientX;
+      startY = event.clientY;
+      activePointer = event.pointerId;
+      moved = false;
+    }, { passive: true });
+
+    gallery.addEventListener("pointermove", event => {
+      if (activePointer !== event.pointerId) return;
+      if (Math.abs(event.clientX - startX) > 8) moved = true;
+    }, { passive: true });
+
+    function finishSwipe(event) {
+      if (activePointer !== event.pointerId) return;
+      const dx = event.clientX - startX;
+      const dy = event.clientY - startY;
+      activePointer = null;
+      if (Math.abs(dx) >= 38 && Math.abs(dx) > Math.abs(dy) * 1.15) {
+        moveGallery(dx < 0 ? 1 : -1);
       }
     }
+
+    gallery.addEventListener("pointerup", finishSwipe, { passive: true });
+    gallery.addEventListener("pointercancel", () => { activePointer = null; }, { passive: true });
+    gallery.addEventListener("lostpointercapture", () => { activePointer = null; }, { passive: true });
   }
 
   /* =========================================
@@ -1292,129 +1206,6 @@
   }
 
   /* =========================================
-     PRODUCT PAGE CART + CHECKOUT
-     ========================================= */
-  function readCart() {
-    try { const value = JSON.parse(localStorage.getItem(CART_KEY) || "[]"); return Array.isArray(value) ? value : []; }
-    catch { return []; }
-  }
-  function writeCart(cart) { localStorage.setItem(CART_KEY, JSON.stringify(cart)); renderCartDrawer(); }
-  function cartSubtotal() { return readCart().reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || item.qty || 1), 0); }
-  function renderCartDrawer() {
-    const cart = readCart();
-    const items = $("cartItems");
-    if (!items) return;
-    items.innerHTML = cart.length ? cart.map((item, index) => `
-      <div class="cart-item">
-        <img src="${escapeHTML(item.image || "")}" alt="${escapeHTML(item.title || item.name || "Product")}">
-        <div class="cart-item-info"><strong>${escapeHTML(item.title || item.name || "Product")}</strong>
-          <p>${item.size ? "Size: " + escapeHTML(item.size) : ""} ${item.color ? "Colour: " + escapeHTML(item.color) : ""}</p>
-          <p>${money(item.price)}</p>
-          <div class="product-cart-quantity"><button type="button" data-cart-step="-1" data-cart-index="${index}">−</button><span>${Number(item.quantity || item.qty || 1)}</span><button type="button" data-cart-step="1" data-cart-index="${index}">+</button><button type="button" data-cart-remove="${index}">Remove</button></div>
-        </div>
-      </div>`).join("") : `<p class="empty-cart">Your shopping bag is empty.</p>`;
-    if ($("cartSubtotal")) $("cartSubtotal").textContent = money(cartSubtotal());
-    if ($("checkoutButton")) $("checkoutButton").disabled = !cart.length;
-    const count = cart.reduce((sum, item) => sum + Number(item.quantity || item.qty || 1), 0);
-    if ($("cartCount")) $("cartCount").textContent = count;
-  }
-  function openCartDrawer() {
-    renderCartDrawer();
-    $("cart")?.classList.add("open");
-    $("cart")?.setAttribute("aria-hidden", "false");
-    $("drawerOverlay")?.classList.add("open");
-  }
-  function closeCartDrawer() {
-    $("cart")?.classList.remove("open");
-    $("cart")?.setAttribute("aria-hidden", "true");
-    $("drawerOverlay")?.classList.remove("open");
-  }
-  function openCheckoutModal() {
-    const cart = readCart();
-    if (!cart.length) return;
-    closeCartDrawer();
-    const subtotal = cartSubtotal();
-    const fee = Math.max(0, Number(state.settings.shipping_fee || 250));
-    const threshold = Math.max(0, Number(state.settings.free_shipping_threshold || 5000));
-    const shipping = threshold && subtotal >= threshold ? 0 : fee;
-    if ($("checkoutItems")) $("checkoutItems").innerHTML = cart.map(item => `<p>${escapeHTML(item.title || item.name)} × ${Number(item.quantity || item.qty || 1)} — ${money(Number(item.price) * Number(item.quantity || item.qty || 1))}</p>`).join("");
-    if ($("checkoutSubtotal")) $("checkoutSubtotal").textContent = money(subtotal);
-    if ($("checkoutShipping")) $("checkoutShipping").textContent = shipping ? money(shipping) : "Free";
-    if ($("checkoutTotal")) $("checkoutTotal").textContent = money(subtotal + shipping);
-    $("checkoutModal")?.classList.add("open");
-    $("checkoutModal")?.setAttribute("aria-hidden", "false");
-  }
-  async function submitCheckout(event) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    if (!form.reportValidity()) return;
-    const button = $("placeOrderButton");
-    const error = $("checkoutError");
-    button.disabled = true;
-    button.textContent = "PLACING ORDER...";
-    if (error) error.textContent = "";
-    try {
-      const fd = new FormData(form);
-      const data = Object.fromEntries(fd.entries());
-      const items = readCart().map(item => ({ id:item.id, quantity:Number(item.quantity || item.qty || 1), size:item.size || "", color:item.color || "" }));
-      const response = await fetch(`${API}/orders`, { method:"POST", headers:{"Content-Type":"application/json"}, credentials:"same-origin", body:JSON.stringify({...data, items}) });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(result.error || "Unable to place order.");
-      localStorage.removeItem(CART_KEY);
-      renderCartDrawer();
-      form.reset();
-      $("checkoutModal")?.classList.remove("open");
-      $("checkoutModal")?.setAttribute("aria-hidden", "true");
-      if ($("successOrderReference")) $("successOrderReference").textContent = `Order Reference: ${result.id || "received"}`;
-      if ($("successMessage")) $("successMessage").textContent = result.email_sent === false || result.admin_email_sent === false ? "Your order was received. Email notifications need store email configuration." : "Your order has been received. A confirmation email will be sent to you.";
-      $("successModal")?.classList.add("open");
-      $("successModal")?.setAttribute("aria-hidden", "false");
-    } catch (err) {
-      if (error) error.textContent = err.message;
-    } finally {
-      button.disabled = false;
-      button.textContent = "PLACE ORDER";
-    }
-  }
-  function setupProductCart() {
-    $("cartButton")?.addEventListener("click", openCartDrawer);
-    $("closeCart")?.addEventListener("click", closeCartDrawer);
-    $("drawerOverlay")?.addEventListener("click", closeCartDrawer);
-    $("checkoutButton")?.addEventListener("click", openCheckoutModal);
-    $("closeCheckout")?.addEventListener("click", () => { $("checkoutModal")?.classList.remove("open"); $("checkoutModal")?.setAttribute("aria-hidden", "true"); });
-    $("checkoutForm")?.addEventListener("submit", submitCheckout);
-    $("paymentMethod")?.addEventListener("change", () => {
-      const method = $("paymentMethod").value;
-      const map = { "Bank Transfer":state.settings.bank_transfer_details, "Easypaisa":state.settings.easypaisa_account, "JazzCash":state.settings.jazzcash_account };
-      const text = map[method] || (method === "Cash on Delivery" ? "Pay in cash when your order is delivered." : "");
-      const box = $("paymentInstructions");
-      if (box) { box.textContent = text || ""; box.hidden = !text; }
-    });
-    $("successContinue")?.addEventListener("click", () => { $("successModal")?.classList.remove("open"); $("successModal")?.setAttribute("aria-hidden", "true"); location.href = "/#products"; });
-    $("cartItems")?.addEventListener("click", event => {
-      const remove = event.target.closest("[data-cart-remove]");
-      const step = event.target.closest("[data-cart-step]");
-      const cart = readCart();
-      if (remove) {
-        cart.splice(Number(remove.dataset.cartRemove), 1);
-        writeCart(cart);
-        return;
-      }
-      if (step) {
-        const index = Number(step.dataset.cartIndex);
-        const item = cart[index];
-        if (!item) return;
-        const next = Number(item.quantity || item.qty || 1) + Number(step.dataset.cartStep);
-        if (next <= 0) cart.splice(index, 1);
-        else if (next > Number(item.stock || 99)) { showToast("No more stock available."); return; }
-        else { item.quantity = next; item.qty = next; }
-        writeCart(cart);
-      }
-    });
-    renderCartDrawer();
-  }
-
-  /* =========================================
      INITIALISE PAGE
      ========================================= */
 
@@ -1425,7 +1216,6 @@
     setupGallery();
     setupShareButton();
     setupReviewForm();
-    setupProductCart();
 
     loadStore();
   }

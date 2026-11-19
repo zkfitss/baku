@@ -18,9 +18,6 @@
   let activeSort = "default";
   let selectedProduct = null;
   let isSubmitting = false;
-  let heroSlideIndex = 0;
-  let heroTimer = null;
-  let collectionTimer = null;
 
   const money = value =>
     "Rs. " + Number(value || 0).toLocaleString("en-PK");
@@ -277,37 +274,22 @@
       setting("announcement", "Welcome to ZK FITS — Discover your style")
     );
 
-    const heroKicker = $("#heroKicker");
-    const heroTitle = $("#heroTitle");
-    const heroSubtitle = $("#heroSubtitle");
-    const heroButton = $("#heroButton");
-    const heroContent = $(".hero-content");
-    const kickerText = String(setting("hero_kicker", "")).trim();
-    const titleText = String(setting("hero_title", "")).trim();
-    const subtitleText = String(setting("hero_subtitle", "")).trim();
-    const buttonText = String(setting("hero_button_text", "")).trim();
-    if (heroKicker) { heroKicker.textContent = kickerText; heroKicker.hidden = !kickerText; }
-    if (heroTitle) { heroTitle.textContent = titleText; heroTitle.hidden = !titleText; }
-    if (heroSubtitle) { heroSubtitle.textContent = subtitleText; heroSubtitle.hidden = !subtitleText; }
-    if (heroButton) { heroButton.textContent = buttonText; heroButton.href = setting("hero_button_link", "#collection"); heroButton.hidden = !buttonText; }
-    if (heroContent) heroContent.hidden = !(kickerText || titleText || subtitleText || buttonText);
+    setText(
+      "#heroTitle",
+      setting("hero_title", "Elegance in Every Stitch")
+    );
+
+    setText(
+      "#heroSubtitle",
+      setting(
+        "hero_subtitle",
+        "Discover timeless Pakistani fashion, thoughtfully designed for you."
+      )
+    );
 
     setImage("heroImage", setting("hero_image"));
     setImage("womenBanner", setting("women_banner"));
     setImage("girlsBanner", setting("girls_banner"));
-
-    setText("#promoTitle", setting("promo_title", "Every Outfit Tells a Story."));
-    setText("#promoDescription", setting("promo_description", "Celebrate your individuality with beautiful styles, elegant details and fashion that feels special."));
-    const promoButton = $("#promoButton");
-    if (promoButton) {
-      promoButton.textContent = setting("promo_button_text", "SHOP THE COLLECTION");
-      promoButton.href = setting("promo_button_link", "#products");
-    }
-    const promo = $(".brand-message");
-    const promoImage = window.matchMedia("(max-width: 700px)").matches
-      ? setting("promo_mobile_image", setting("promo_image"))
-      : setting("promo_image");
-    if (promo && promoImage) promo.style.backgroundImage = `linear-gradient(rgba(25,20,17,.42),rgba(25,20,17,.42)),url("${promoImage.replace(/["\\]/g, "")}")`;
 
     const root = document.documentElement.style;
 
@@ -326,15 +308,6 @@
     if (setting("header_color")) {
       root.setProperty("--store-header", setting("header_color"));
     }
-    if (setting("header_text_color")) root.setProperty("--store-header-text", setting("header_text_color"));
-    root.setProperty("--header-height", `${Math.max(50, Math.min(150, Number(setting("header_height", 83)) || 83))}px`);
-    root.setProperty("--header-mobile-height", `${Math.max(45, Math.min(120, Number(setting("header_mobile_height", 70)) || 70))}px`);
-    root.setProperty("--hero-height-desktop", `${Math.max(250, Math.min(900, Number(setting("hero_height_desktop", 570)) || 570))}px`);
-    root.setProperty("--hero-height-mobile", `${Math.max(220, Math.min(750, Number(setting("hero_height_mobile", 470)) || 470))}px`);
-    root.setProperty("--collection-height-desktop", `${Math.max(220, Math.min(700, Number(setting("collection_height_desktop", 430)) || 430))}px`);
-    root.setProperty("--collection-height-mobile", `${Math.max(180, Math.min(600, Number(setting("collection_height_mobile", 340)) || 340))}px`);
-    root.setProperty("--promo-height-desktop", `${Math.max(220, Math.min(700, Number(setting("promo_height_desktop", 400)) || 400))}px`);
-    root.setProperty("--promo-height-mobile", `${Math.max(200, Math.min(650, Number(setting("promo_height_mobile", 360)) || 360))}px`);
 
     if (setting("footer_color")) {
       root.setProperty("--store-footer", setting("footer_color"));
@@ -343,14 +316,6 @@
     if (setting("footer_text_color")) {
       root.setProperty("--store-footer-text", setting("footer_text_color"));
     }
-    root.setProperty("--header-font-size", `${Math.max(10, Math.min(32, Number(setting("header_font_size", 14)) || 14))}px`);
-    root.setProperty("--header-mobile-font-size", `${Math.max(10, Math.min(28, Number(setting("header_mobile_font_size", 13)) || 13))}px`);
-    root.setProperty("--header-font-family", setting("header_font_family", "DM Sans"));
-    root.setProperty("--header-font-weight", setting("header_font_weight", "500"));
-    root.setProperty("--footer-font-size", `${Math.max(10, Math.min(24, Number(setting("footer_font_size", 13)) || 13))}px`);
-    root.setProperty("--footer-font-family", setting("footer_font_family", "DM Sans"));
-    root.setProperty("--footer-font-weight", setting("footer_font_weight", "400"));
-    $("#siteHeader")?.classList.toggle("header-no-animation", setting("header_animation", "1") === "0");
 
     setText(
       "#contactHeading",
@@ -435,133 +400,8 @@
     );
 
     buildCustomMenu();
-    buildFooterMenu();
 
     setText("#currentYear", new Date().getFullYear());
-    const copyright = $("#copyrightText");
-    if (copyright) copyright.textContent = setting("copyright_text", "All Rights Reserved");
-    startVisualRotations();
-  }
-
-  function parseImageList(value) {
-    try { const parsed = JSON.parse(value || "[]"); return Array.isArray(parsed) ? parsed.filter(Boolean) : []; }
-    catch { return []; }
-  }
-
-  function startVisualRotations() {
-    if (heroTimer) clearInterval(heroTimer);
-    if (collectionTimer) clearInterval(collectionTimer);
-
-    const desktopSlides = parseImageList(setting("hero_slides", "[]"));
-    if (!desktopSlides.length && setting("hero_image")) desktopSlides.push(setting("hero_image"));
-    const mobileSlides = parseImageList(setting("hero_mobile_slides", "[]"));
-    if (!mobileSlides.length && setting("hero_mobile_image")) mobileSlides.push(setting("hero_mobile_image"));
-    const hero = $("#heroImage");
-    const controls = $("#heroSliderControls");
-    const mobile = () => window.matchMedia("(max-width: 700px)").matches;
-    let activeSlides = [];
-    let lastViewport = mobile();
-
-    const getSlides = () => mobile() && mobileSlides.length ? mobileSlides : desktopSlides;
-    const setHero = index => {
-      const slides = getSlides();
-      if (!slides.length || !hero) return;
-      activeSlides = slides;
-      heroSlideIndex = ((index % slides.length) + slides.length) % slides.length;
-      const nextSrc = slides[heroSlideIndex];
-      // Do not fade/reassign the same image: this prevents a one-image mobile banner
-      // from visibly flashing when desktop slides rotate in the background.
-      if (hero.getAttribute("src") !== nextSrc) {
-        hero.style.transition = "opacity .35s ease";
-        hero.style.opacity = "0";
-        hero.src = nextSrc;
-        const reveal = () => { hero.style.opacity = "1"; };
-        if (hero.complete) requestAnimationFrame(reveal);
-        else hero.addEventListener("load", reveal, { once: true });
-      } else {
-        hero.style.opacity = "1";
-      }
-      hero.hidden = false;
-      $("#heroPlaceholder") && ($("#heroPlaceholder").hidden = true);
-      if (controls) controls.hidden = slides.length < 2 || setting("hero_slider_enabled", "1") === "0";
-    };
-
-    activeSlides = getSlides();
-    if (activeSlides.length) {
-      setHero(Math.min(heroSlideIndex, activeSlides.length - 1));
-      const heroSection = $(".hero-section");
-      if (heroSection && !heroSection.dataset.swipeReady) {
-        let touchStartX = 0;
-        heroSection.addEventListener("touchstart", event => { touchStartX = event.changedTouches[0]?.clientX || 0; }, { passive:true });
-        heroSection.addEventListener("touchend", event => {
-          const endX = event.changedTouches[0]?.clientX || 0;
-          const delta = endX - touchStartX;
-          if (Math.abs(delta) > 45 && getSlides().length > 1) setHero(heroSlideIndex + (delta < 0 ? 1 : -1));
-        }, { passive:true });
-        heroSection.dataset.swipeReady = "1";
-      }
-      // Both desktop and mobile use the same 10-second interval. A single image
-      // never gets an autoplay timer, so it remains completely still.
-      if (activeSlides.length > 1 && setting("hero_slider_enabled", "1") !== "0") {
-        heroTimer = setInterval(() => setHero(heroSlideIndex + 1), 10000);
-      }
-      if ($("#heroPrev")) $("#heroPrev").onclick = () => setHero(heroSlideIndex - 1);
-      if ($("#heroNext")) $("#heroNext").onclick = () => setHero(heroSlideIndex + 1);
-    } else if (controls) {
-      controls.hidden = true;
-    }
-
-    // If the visitor rotates the device or resizes across the mobile breakpoint,
-    // switch to that viewport's own slide set without waiting for a timer tick.
-    if (!window.__zkHeroResizeBound) {
-      window.addEventListener("resize", () => {
-        const nowMobile = mobile();
-        if (nowMobile !== lastViewport) {
-          lastViewport = nowMobile;
-          startVisualRotations();
-        }
-      }, { passive: true });
-      window.__zkHeroResizeBound = true;
-    }
-
-    const rotateCollections = () => {
-      const women = products.filter(p => isActive(p) && categoryMatches(p, "Women") && productImage(p));
-      const girls = products.filter(p => isActive(p) && categoryMatches(p, "Girls") && productImage(p));
-      const applyCollection = (id, list, desktopKey, mobileKey, index) => {
-        const img = $("#" + id);
-        if (!img) return;
-        const custom = mobile() ? setting(mobileKey, setting(desktopKey)) : setting(desktopKey);
-        if (custom) { if (img.src !== custom) setImage(id, custom); return; }
-        if (!list.length) return;
-        const src = productImage(list[index % list.length]);
-        if (src && img.src !== src) setImage(id, src);
-      };
-      const tick = Number(window.__zkfitsCollectionTick || 0);
-      applyCollection("womenBanner", women, "women_banner", "women_mobile_banner", tick);
-      applyCollection("girlsBanner", girls, "girls_banner", "girls_mobile_banner", tick);
-      window.__zkfitsCollectionTick = tick + 1;
-    };
-    rotateCollections();
-    collectionTimer = setInterval(rotateCollections, 5000);
-    window.addEventListener("resize", () => {
-      setHero(heroSlideIndex);
-      rotateCollections();
-      const promo = $(".brand-message");
-      const promoImage = mobile() ? setting("promo_mobile_image", setting("promo_image")) : setting("promo_image");
-      if (promo && promoImage) promo.style.backgroundImage = `linear-gradient(rgba(25,20,17,.42),rgba(25,20,17,.42)),url("${promoImage.replace(/["\\]/g, "")}")`;
-    }, { passive: true });
-  }
-
-  function buildFooterMenu() {
-    const raw = setting("footer_links");
-    const nav = $("#footerMenu");
-    if (!raw || !nav) return;
-    let links = [];
-    try { links = JSON.parse(raw); }
-    catch { links = String(raw).split("\n").map(line => { const [label,url] = line.split("|"); return {label,url}; }); }
-    if (!Array.isArray(links)) return;
-    const valid = links.filter(item => item && String(item.label || "").trim() && String(item.url || "").trim());
-    if (valid.length) nav.innerHTML = valid.map(item => `<a href="${escapeHTML(item.url)}">${escapeHTML(item.label)}</a>`).join("");
   }
 
   function setSocial(id, url) {
@@ -618,11 +458,8 @@
 
     nav.innerHTML = valid.map(link => {
       const label = link.label || link.title;
-      const rawUrl = String(link.url || link.href || "").trim();
-      const url = rawUrl.startsWith("#") && location.pathname.endsWith("product.html")
-        ? `/${rawUrl}`
-        : rawUrl;
-      if (/^\s*javascript:/i.test(url)) return "";
+      const url = link.url || link.href;
+
       return `<a href="${escapeHTML(url)}">${escapeHTML(label)}</a>`;
     }).join("");
   }
@@ -642,7 +479,6 @@
     }
 
     return category.includes(normalise(filter)) ||
-      normalise(product.collection).includes(normalise(filter)) ||
       title.includes(normalise(filter));
   }
 
@@ -677,10 +513,10 @@
             ${hasSale ? `<del>${money(original)}</del>` : ""}
           </div>
 
-          <div class="product-card-actions">
-            <a class="quick-add-button card-add-button" href="/product.html?id=${encodeURIComponent(product.id)}&action=cart" ${stock <= 0 ? 'aria-disabled="true"' : ""}>ADD TO CART</a>
-            <a class="quick-add-button card-buy-button" href="/product.html?id=${encodeURIComponent(product.id)}&action=buy" ${stock <= 0 ? 'aria-disabled="true"' : ""}>BUY NOW</a>
-          </div>
+          <button class="quick-add-button" type="button"
+            data-product="${id}" ${stock <= 0 ? "disabled" : ""}>
+            ${stock <= 0 ? "SOLD OUT" : "VIEW PRODUCT"}
+          </button>
         </div>
       </article>
     `;
@@ -1017,20 +853,6 @@
     return fee;
   }
 
-  function updatePaymentInstructions() {
-    const method = $("#paymentMethod")?.value || "";
-    const target = $("#paymentInstructions");
-    if (!target) return;
-    const instructions = {
-      "Bank Transfer": setting("bank_transfer_details"),
-      "Easypaisa": setting("easypaisa_account"),
-      "JazzCash": setting("jazzcash_account")
-    };
-    const text = instructions[method] || (method === "Cash on Delivery" ? "Pay in cash when your order is delivered." : "");
-    target.textContent = text;
-    target.hidden = !text;
-  }
-
   function openCheckout() {
     if (!cart.length) return;
 
@@ -1053,7 +875,6 @@
     setText("#checkoutShipping", shipping === 0 ? "Free" : money(shipping));
     setText("#checkoutTotal", money(subtotal + shipping));
     setText("#checkoutError", "");
-    updatePaymentInstructions();
 
     showModal($("#checkoutModal"));
   }
@@ -1136,13 +957,6 @@
   function setupFilters() {
     const filters = $("#collectionFilters");
     const sort = $("#sortProducts");
-    document.querySelectorAll(".category-card[data-category]").forEach(card => {
-      card.addEventListener("click", () => {
-        activeFilter = card.dataset.category;
-        $$(".filter-button").forEach(item => item.classList.toggle("active", item.dataset.filter === activeFilter));
-        renderProducts();
-      });
-    });
 
     if (filters) {
       filters.addEventListener("click", event => {
@@ -1230,7 +1044,7 @@
       const productButton = event.target.closest("[data-product]");
 
       if (productButton) {
-        location.href = "/product.html?id=" + encodeURIComponent(productButton.dataset.product);
+        openProduct(productButton.dataset.product);
         return;
       }
 
@@ -1261,7 +1075,6 @@
 
     $("#checkoutButton")?.addEventListener("click", openCheckout);
     $("#checkoutForm")?.addEventListener("submit", placeOrder);
-    $("#paymentMethod")?.addEventListener("change", updatePaymentInstructions);
 
     $("#closeProductModal")?.addEventListener("click", () =>
       hideModal($("#productModal"))

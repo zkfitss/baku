@@ -237,7 +237,7 @@ img {
 .menu-overlay {
   position: fixed;
   inset: 0;
-  z-index: 35;
+  z-index: 45;
   background: rgba(0,0,0,.4);
   opacity: 0;
   visibility: hidden;
@@ -520,22 +520,20 @@ button:disabled {
 .product-image-wrap {
   position: relative;
   width: 100%;
-  aspect-ratio: auto;
-  overflow: visible;
-  background: transparent;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  background: #eee9e2;
 }
 
 .product-image-wrap img {
   width: 100%;
-  height: auto;
-  aspect-ratio: auto;
+  height: 100%;
   object-fit: contain;
-  display: block;
-  transition: none;
+  transition: transform .5s ease;
 }
 
 .product-card:hover .product-image-wrap img {
-  transform: none;
+  transform: scale(1.035);
 }
 
 .product-image-placeholder {
@@ -607,7 +605,7 @@ button:disabled {
 
 .quick-add-button {
   width: 100%;
-  margin-top: 0;
+  margin-top: 12px;
   padding: 11px;
   border: 1px solid #d9d2c8;
   background: transparent;
@@ -1687,71 +1685,4 @@ button:disabled {
     transition-duration: .01ms !important;
     animation-duration: .01ms !important;
   }
-}
-
-
-/* Admin-controlled typography and visual controls */
-.main-nav a { font-size: var(--header-font-size, 13px); font-family: var(--header-font-family, inherit); font-weight: var(--header-font-weight, 500); }
-.site-header { transition: background-color .25s ease, box-shadow .25s ease; }
-.site-header.header-no-animation { transition: none; }
-.footer-about p, .footer-column p, .footer-column nav a, .footer-bottom p { font-size: var(--footer-font-size, 13px); font-family: var(--footer-font-family, inherit); font-weight: var(--footer-font-weight, 400); }
-.copyright-centered { width: 100%; text-align: center; }
-.footer-bottom { justify-content: center; text-align: center; }
-.footer-bottom > p:last-child { display: none; }
-.hero-slider-controls { position:absolute; z-index:4; right:28px; bottom:25px; display:flex; gap:9px; }
-.hero-slider-controls button { width:42px; height:42px; border:1px solid rgba(255,255,255,.75); border-radius:50%; background:rgba(30,25,22,.45); color:#fff; font-size:28px; line-height:1; cursor:pointer; }
-.brand-message { background-position:center; background-size:cover; background-repeat:no-repeat; }
-@media(max-width:700px) {
-  .main-nav a { font-size: var(--header-mobile-font-size, 13px); }
-  .hero-slider-controls { right:15px; bottom:15px; }
-  .hero-slider-controls button { width:36px; height:36px; }
-}
-
-.header-inner { min-height: var(--header-height, 83px); }
-.site-header { color: var(--store-header-text, var(--store-text)); }
-.site-header .main-nav a, .site-header .brand-logo, .site-header .menu-toggle { color: var(--store-header-text, var(--store-text)); }
-@media(max-width:700px) { .header-inner { min-height: var(--header-mobile-height, 70px); } }
-
-.hero-section { min-height: var(--hero-height-desktop, 570px); }
-.category-card { min-height: var(--collection-height-desktop, 430px); }
-.brand-message { min-height: var(--promo-height-desktop, 400px); display:flex; align-items:center; justify-content:center; }
-@media(max-width:700px) {
-  .hero-section { min-height: var(--hero-height-mobile, 470px); }
-  .category-card { min-height: var(--collection-height-mobile, 340px); }
-  .brand-message { min-height: var(--promo-height-mobile, 360px); padding:55px 20px; }
-}
-
-.payment-instructions { padding:12px 14px; margin:10px 0; background:#f5f0ea; border-radius:8px; color:#51443a; font-size:13px; line-height:1.7; white-space:pre-line; }
-
-/* ZK FITS final visual refinements */
-.product-card-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:14px; }
-.product-card-actions .quick-add-button { display:flex; align-items:center; justify-content:center; min-height:42px; padding:10px 6px; text-align:center; text-decoration:none; font-size:9px; letter-spacing:.8px; }
-.card-buy-button { background:var(--store-accent); color:#fff; border-color:var(--store-accent); }
-.card-add-button { background:transparent; }
-.product-image-wrap { border:0; box-shadow:none; border-radius:0; }
-.hero-slider-controls { opacity:0; pointer-events:auto; }
-.hero-slider-controls button { opacity:0; color:transparent; background:transparent; border:0; width:48px; height:64px; }
-.hero-slider-controls button:focus-visible { opacity:1; outline:2px solid currentColor; }
-@media(max-width:700px) { .hero-slider-controls button { width:48px; height:64px; } }
-
-/* Keep the navigation panel and its links above the dimming overlay. */
-.site-header { position: relative; z-index: 40; }
-.menu-overlay { z-index: 35; }
-@media (max-width: 760px) { .main-nav { z-index: 50; } }
-
-
-/* Reliable mobile navigation stacking and tap targets. */
-@media (max-width: 700px) {
-  .menu-overlay { z-index: 55 !important; pointer-events: none; }
-  .menu-overlay.open { pointer-events: auto; }
-  .main-nav { z-index: 60 !important; pointer-events: auto; }
-  .main-nav.open { visibility: visible; pointer-events: auto; }
-  .main-nav a { display: block; width: 100%; min-height: 48px; position: relative; z-index: 1; pointer-events: auto; }
-  .menu-toggle { position: relative; z-index: 61; cursor: pointer; touch-action: manipulation; }
-  body.menu-open { overflow: hidden; }
-}
-/* Keep the overlay below the sticky header's stacking context, so the menu remains tappable. */
-@media (max-width: 700px) {
-  .menu-overlay { z-index: 35 !important; }
-  .site-header { z-index: 40 !important; }
 }

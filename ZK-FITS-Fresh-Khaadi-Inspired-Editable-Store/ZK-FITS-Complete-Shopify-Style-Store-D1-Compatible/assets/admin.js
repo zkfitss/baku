@@ -9,11 +9,8 @@
   let reviews = [];
 
   let editingProductImage = "";
-  let editingProductImages = [];
   let uploadedSettingsImages = {};
   let reviewFilter = "pending";
-  let knownOrderIds = null;
-  let orderPollTimer = null;
 
   const $ = (selector, root = document) =>
     root.querySelector(selector);
@@ -200,17 +197,7 @@
       const data = await api("/admin");
 
       products = data.products || [];
-      const freshOrders = data.orders || [];
-      if (knownOrderIds !== null) {
-        const known = new Set(knownOrderIds);
-        const newOrders = freshOrders.filter(order => !known.has(String(order.id)));
-        if (newOrders.length) {
-          notify(`${newOrders.length} new customer order${newOrders.length > 1 ? "s" : ""} received.`);
-          showNewOrderPopup(newOrders[0]);
-        }
-      }
-      knownOrderIds = freshOrders.map(order => String(order.id));
-      orders = freshOrders;
+      orders = data.orders || [];
       settings = data.settings || {};
 
       renderProducts();
@@ -225,20 +212,6 @@
     } catch (error) {
       notify(error.message, true);
     }
-  }
-
-  function showNewOrderPopup(order) {
-    let popup = document.getElementById("newOrderPopup");
-    if (!popup) {
-      popup = document.createElement("div");
-      popup.id = "newOrderPopup";
-      popup.setAttribute("role", "status");
-      popup.style.cssText = "position:fixed;right:18px;top:18px;z-index:99999;max-width:340px;background:#292521;color:#fff;padding:18px 20px;border-radius:12px;box-shadow:0 12px 40px #0003;font:14px/1.5 Arial,sans-serif";
-      document.body.appendChild(popup);
-    }
-    popup.innerHTML = `<strong>New ZK FITS order!</strong><p style="margin:8px 0">Order #${escapeHTML(order.id)} · ${escapeHTML(order.customer_name || "Customer")} · ${money(order.total)}</p><button type="button" id="viewNewOrder" style="background:#fff;color:#292521;border:0;border-radius:6px;padding:8px 12px;cursor:pointer">View orders</button> <button type="button" id="dismissNewOrder" style="background:transparent;color:#fff;border:1px solid #aaa;border-radius:6px;padding:8px 12px;cursor:pointer">Dismiss</button>`;
-    document.getElementById("viewNewOrder")?.addEventListener("click", () => { openTab("orders"); popup.remove(); });
-    document.getElementById("dismissNewOrder")?.addEventListener("click", () => popup.remove());
   }
 
   function renderStats() {
@@ -333,7 +306,6 @@
     form.reset();
 
     editingProductImage = product?.image || "";
-    editingProductImages = [...(product?.image ? [product.image] : []), ...(Array.isArray(product?.images) ? product.images : [])].filter(Boolean);
 
     form.elements.id.value = product?.id || "";
     form.elements.title.value =
@@ -356,6 +328,7 @@
     form.elements.description.value =
       product?.description || "";
 
+    form.elements.image.value = editingProductImage;
 
     form.elements.featured.checked =
       Boolean(product?.featured);
@@ -366,7 +339,10 @@
     $("#editorTitle").textContent =
       product ? "Edit Product" : "Add New Product";
 
-    renderProductImagesPreview();
+    $("#productImagePreview").innerHTML =
+      editingProductImage
+        ? `<img src="${escapeHTML(editingProductImage)}" alt="Product preview">`
+        : "";
 
     $("#variantRows").innerHTML = "";
 
@@ -393,95 +369,50 @@
 
   function addVariantRow(variant = {}) {
     const row = document.createElement("div");
-    row.className = "variant-row variant-row-rich";
-    row.dataset.images = JSON.stringify(Array.isArray(variant.images) ? variant.images : []);
+    row.className = "variant-row";
 
     row.innerHTML = `
-      <input type="text" class="variant-size" placeholder="Size e.g. S"
-        value="${escapeHTML(variant.size || "")}">
-      <input type="text" class="variant-color" placeholder="Colour e.g. Black"
-        value="${escapeHTML(variant.color || "")}">
-      <input type="number" class="variant-stock" min="0" step="1" placeholder="Stock"
-        value="${Math.max(0, Number(variant.stock) || 0)}">
-      <label class="variant-images-label">Colour images
-        <input type="file" class="variant-images" accept="image/jpeg,image/png,image/webp,image/avif" multiple>
-      </label>
-      <div class="variant-image-preview"></div>
-      <button type="button" class="remove-variant danger" aria-label="Remove variant">×</button>
+      <input
+        type="text"
+        class="variant-size"
+        placeholder="Size e.g. S"
+        value="${escapeHTML(variant.size || "")}"
+      >
+
+      <input
+        type="text"
+        class="variant-color"
+        placeholder="Colour e.g. Black"
+        value="${escapeHTML(variant.color || "")}"
+      >
+
+      <input
+        type="number"
+        class="variant-stock"
+        min="0"
+        step="1"
+        placeholder="Stock"
+        value="${Math.max(0, Number(variant.stock) || 0)}"
+      >
+
+      <button type="button"
+        class="remove-variant danger"
+        aria-label="Remove variant">
+        ×
+      </button>
     `;
 
-    const preview = row.querySelector(".variant-image-preview");
-    const drawPreview = () => {
-      const images = JSON.parse(row.dataset.images || "[]");
-      preview.innerHTML = images.map((url, index) => `<span class="admin-image-thumb"><img src="${escapeHTML(url)}" alt="Variant image"><button type="button" data-variant-image-remove="${index}" aria-label="Remove image">×</button></span>`).join("");
-    };
-    drawPreview();
+    row.querySelector(".remove-variant").addEventListener(
+      "click",
+      () => row.remove()
+    );
 
-    row.querySelector(".variant-images").addEventListener("change", async event => {
-      const files = [...(event.target.files || [])];
-      if (!files.length) return;
-      const input = event.target;
-      input.disabled = true;
-      try {
-        const current = JSON.parse(row.dataset.images || "[]");
-        const uploaded = [];
-        for (const file of files) {
-          const url = await uploadImage(file, "product-variants");
-          if (url) uploaded.push(url);
-        }
-        row.dataset.images = JSON.stringify([...current, ...uploaded]);
-        drawPreview();
-        notify("Colour images uploaded.");
-      } catch (error) {
-        notify(error.message, true);
-      } finally {
-        input.disabled = false;
-        input.value = "";
-      }
-    });
-
-    row.querySelector(".remove-variant").addEventListener("click", () => row.remove());
     $("#variantRows").appendChild(row);
   }
 
   $("#addVariant")?.addEventListener("click", () => {
     addVariantRow();
   });
-
-  $("#generateVariants")?.addEventListener("click", () => {
-    const form = $("#productForm");
-    const sizes = splitSizeList(form.elements.sizes.value);
-    const colors = splitColorList(form.elements.colors.value);
-    if (!sizes.length) {
-      notify("Enter at least one product size first. Colour is optional.", true);
-      return;
-    }
-    const existing = collectVariants();
-    const byKey = new Map(existing.map(v => [`${v.size.toLowerCase()}|${v.color.toLowerCase()}`, v]));
-    const combinations = [];
-    for (const size of sizes) {
-      const coloursForSize = colors.length ? colors : [""];
-      for (const color of coloursForSize) {
-        const key = `${size.toLowerCase()}|${color.toLowerCase()}`;
-        combinations.push(byKey.get(key) || { size, color, stock: 0, images: [] });
-      }
-    }
-    $("#variantRows").innerHTML = "";
-    combinations.forEach(addVariantRow);
-    notify(`${combinations.length} inventory rows generated. Colour is optional; enter stock for each size/colour row.`);
-  });
-
-  function splitSizeList(value) {
-    const raw = String(value || "").trim();
-    if (!raw) return [];
-    // Accept comma-separated values, and also the common shorthand "S M L XL".
-    return (raw.includes(",") ? raw.split(",") : raw.split(/\s+/))
-      .map(value => value.trim()).filter(Boolean);
-  }
-
-  function splitColorList(value) {
-    return String(value || "").split(",").map(value => value.trim()).filter(Boolean);
-  }
 
   function collectVariants() {
     return [
@@ -495,8 +426,7 @@
           Math.floor(
             Number(row.querySelector(".variant-stock").value) || 0
           )
-        ),
-        images: JSON.parse(row.dataset.images || "[]")
+        )
       }))
       .filter(item => item.size || item.color);
   }
@@ -521,58 +451,30 @@
     return result.url;
   }
 
-  function renderProductImagesPreview() {
-    const preview = $("#productImagesPreview");
-    if (!preview) return;
-    preview.classList.add("ordered-product-images");
-    preview.innerHTML = editingProductImages.map((url, index) => `<div class="ordered-image-item" draggable="true" data-product-image-index="${index}"><img src="${escapeHTML(url)}" alt="Product image ${index + 1}"><span class="image-order-label">${index===0?"COVER PHOTO":`IMAGE ${index+1}`}</span><div class="image-order-actions"><button type="button" data-image-up="${index}" ${index===0?"disabled":""} aria-label="Move image up">↑</button><button type="button" data-image-down="${index}" ${index===editingProductImages.length-1?"disabled":""} aria-label="Move image down">↓</button><button type="button" data-product-image-remove="${index}" aria-label="Remove image">×</button></div></div>`).join("");
-  }
+  $("#productImage")?.addEventListener("change", async event => {
+    const file = event.target.files[0];
+    if (!file) return;
 
-  $("#productImagesPreview")?.addEventListener("click", event => {
-    const remove = event.target.closest("[data-product-image-remove]");
-    const up = event.target.closest("[data-image-up]");
-    const down = event.target.closest("[data-image-down]");
-    if (remove) editingProductImages.splice(Number(remove.dataset.productImageRemove),1);
-    else if (up) { const i=Number(up.dataset.imageUp); if(i>0) [editingProductImages[i-1],editingProductImages[i]]=[editingProductImages[i],editingProductImages[i-1]]; }
-    else if (down) { const i=Number(down.dataset.imageDown); if(i<editingProductImages.length-1) [editingProductImages[i+1],editingProductImages[i]]=[editingProductImages[i],editingProductImages[i+1]]; }
-    else return;
-    editingProductImage=editingProductImages[0]||""; renderProductImagesPreview();
-  });
-  let draggedProductImage=null;
-  $("#productImagesPreview")?.addEventListener("dragstart",e=>{const item=e.target.closest("[data-product-image-index]");if(!item)return;draggedProductImage=Number(item.dataset.productImageIndex);e.dataTransfer.effectAllowed="move";});
-  $("#productImagesPreview")?.addEventListener("dragover",e=>{if(e.target.closest("[data-product-image-index]"))e.preventDefault();});
-  $("#productImagesPreview")?.addEventListener("drop",e=>{const item=e.target.closest("[data-product-image-index]");if(!item||draggedProductImage===null)return;e.preventDefault();const target=Number(item.dataset.productImageIndex);const [moved]=editingProductImages.splice(draggedProductImage,1);editingProductImages.splice(target,0,moved);draggedProductImage=null;editingProductImage=editingProductImages[0]||"";renderProductImagesPreview();});
-
-  $("#productImages")?.addEventListener("change", async event => {
-    const files = [...(event.target.files || [])];
-    if (!files.length) return;
-    const input = event.target;
-    input.disabled = true;
     try {
-      for (const file of files) {
-        const url = await uploadImage(file, "products");
-        if (url) editingProductImages.push(url);
-      }
-      editingProductImage = editingProductImages[0] || "";
-      renderProductImagesPreview();
-      notify("Product images uploaded.");
+      const preview = $("#productImagePreview");
+
+      preview.textContent = "Uploading image...";
+
+      const url = await uploadImage(file, "products");
+
+      editingProductImage = url;
+      $("#productForm").elements.image.value = url;
+
+      preview.innerHTML = `
+        <img src="${escapeHTML(url)}" alt="Product image preview">
+      `;
+
+      notify("Product image uploaded.");
+
     } catch (error) {
       notify(error.message, true);
-    } finally {
-      input.disabled = false;
-      input.value = "";
+      $("#productImagePreview").textContent = "";
     }
-  });
-
-  $("#variantRows")?.addEventListener("click", event => {
-    const button = event.target.closest("[data-variant-image-remove]");
-    if (!button) return;
-    const row = button.closest(".variant-row");
-    if (!row) return;
-    const images = JSON.parse(row.dataset.images || "[]");
-    images.splice(Number(button.dataset.variantImageRemove), 1);
-    row.dataset.images = JSON.stringify(images);
-    row.querySelector(".variant-image-preview").innerHTML = images.map((url, index) => `<span class="admin-image-thumb"><img src="${escapeHTML(url)}" alt="Variant image"><button type="button" data-variant-image-remove="${index}" aria-label="Remove image">×</button></span>`).join("");
   });
 
   // ------------------------------------
@@ -597,12 +499,18 @@
         ? null
         : Number(form.elements.sale_price.value),
 
-      sizes: splitSizeList(form.elements.sizes.value),
-      colors: splitColorList(form.elements.colors.value),
+      sizes: form.elements.sizes.value
+        .split(",")
+        .map(value => value.trim())
+        .filter(Boolean),
+
+      colors: form.elements.colors.value
+        .split(",")
+        .map(value => value.trim())
+        .filter(Boolean),
 
       description: form.elements.description.value,
-      image: editingProductImages[0] || "",
-      images: editingProductImages.slice(1),
+      image: editingProductImage,
       variants,
 
       stock: variants.length
@@ -614,17 +522,7 @@
     };
 
     if (!product.image) {
-      notify("Please upload at least one product image.", true);
-      return;
-    }
-
-    if (product.sizes.length && !variants.length) {
-      notify("Generate size inventory rows and enter stock for each size.", true);
-      return;
-    }
-
-    if (variants.some(v => !v.size)) {
-      notify("Every inventory row must have a size. Colour is optional.", true);
+      notify("Please upload a product image.", true);
       return;
     }
 
@@ -799,18 +697,14 @@
     setLoading(button, true, "UPDATING...");
 
     try {
-      const result = await api("/orders/" + encodeURIComponent(id), {
+      await api("/orders/" + encodeURIComponent(id), {
         method: "PUT",
         body: JSON.stringify({ status: select.value })
       });
 
       await loadAdmin();
 
-      if (select.value === "Confirmed") {
-        notify(result.customer_email_sent ? "Order confirmed. Customer confirmation email sent." : "Order confirmed, but customer email was not sent: " + (result.email_message || "Check Resend configuration."), !result.customer_email_sent);
-      } else {
-        notify("Order status updated.");
-      }
+      notify("Order status updated.");
 
     } catch (error) {
       notify(error.message, true);
@@ -849,12 +743,11 @@
       folder: "banners"
     },
 
-    seoImageUpload: { key: "seo_image", preview: "seoImagePreview", folder: "branding" },
-    heroMobileUpload: { key: "hero_mobile_image", preview: "heroMobilePreview", folder: "banners" },
-    womenMobileUpload: { key: "women_mobile_banner", preview: "womenMobilePreview", folder: "banners" },
-    girlsMobileUpload: { key: "girls_mobile_banner", preview: "girlsMobilePreview", folder: "banners" },
-    promoUpload: { key: "promo_image", preview: "promoPreview", folder: "banners" },
-    promoMobileUpload: { key: "promo_mobile_image", preview: "promoMobilePreview", folder: "banners" }
+    seoImageUpload: {
+      key: "seo_image",
+      preview: "seoImagePreview",
+      folder: "branding"
+    }
   };
 
   function populateSettings() {
@@ -871,19 +764,6 @@
       element.value = value;
     }
 
-    const mobileSlidesPreview = $("#heroMobileSlidesPreview");
-    if (mobileSlidesPreview) {
-      let mobileSlides = [];
-      try { mobileSlides = JSON.parse(settings.hero_mobile_slides || "[]"); } catch {}
-      mobileSlidesPreview.innerHTML = mobileSlides.map((url, index) => `<span class="admin-image-thumb"><img src="${escapeHTML(url)}" alt="Mobile hero slide"><button type="button" data-mobile-slide-remove="${index}" aria-label="Remove slide">×</button></span>`).join("");
-    }
-    const slidesPreview = $("#heroSlidesPreview");
-    if (slidesPreview) {
-      let slides = [];
-      try { slides = JSON.parse(settings.hero_slides || "[]"); } catch {}
-      slidesPreview.innerHTML = slides.map((url, index) => `<span class="admin-image-thumb"><img src="${escapeHTML(url)}" alt="Hero slide"><button type="button" data-hero-slide-remove="${index}" aria-label="Remove slide">×</button></span>`).join("");
-    }
-
     Object.entries(settingFileFields).forEach(([, config]) => {
       const preview = $("#" + config.preview);
       const url = settings[config.key];
@@ -891,7 +771,7 @@
       if (!preview) return;
 
       preview.innerHTML = url
-        ? `<span class="admin-image-thumb"><img src="${escapeHTML(url)}" alt="Uploaded image preview"><button type="button" data-clear-setting="${escapeHTML(config.key)}" aria-label="Remove image">×</button></span>`
+        ? `<img src="${escapeHTML(url)}" alt="Uploaded image preview">`
         : "";
     });
   }
@@ -910,7 +790,9 @@
 
         uploadedSettingsImages[config.key] = url;
 
-        preview.innerHTML = `<span class="admin-image-thumb"><img src="${escapeHTML(url)}" alt="Uploaded image preview"><button type="button" data-clear-setting="${escapeHTML(config.key)}" aria-label="Remove image">×</button></span>`;
+        preview.innerHTML = `
+          <img src="${escapeHTML(url)}" alt="Uploaded image preview">
+        `;
 
         notify("Website image uploaded.");
 
@@ -919,71 +801,6 @@
         notify(error.message, true);
       }
     });
-  });
-
-  $("#heroSlidesUpload")?.addEventListener("change", async event => {
-    const files = [...(event.target.files || [])];
-    if (!files.length) return;
-    const preview = $("#heroSlidesPreview");
-    preview.textContent = "Uploading slider images...";
-    try {
-      const urls = [];
-      for (const file of files) urls.push(await uploadImage(file, "hero-slides"));
-      const existing = (() => { try { return JSON.parse(settings.hero_slides || "[]"); } catch { return []; } })();
-      uploadedSettingsImages.hero_slides = JSON.stringify([...existing, ...urls].slice(0, 10));
-      preview.innerHTML = [...existing, ...urls].map((url, index) => `<span class="admin-image-thumb"><img src="${escapeHTML(url)}" alt="Hero slide"><button type="button" data-hero-slide-remove="${index}" aria-label="Remove slide">×</button></span>`).join("");
-      notify("Hero slider images uploaded.");
-    } catch (error) {
-      preview.textContent = "";
-      notify(error.message, true);
-    } finally {
-      event.target.value = "";
-    }
-  });
-
-  $("#heroMobileSlidesUpload")?.addEventListener("change", async event => {
-    const files = [...(event.target.files || [])];
-    if (!files.length) return;
-    const preview = $("#heroMobileSlidesPreview");
-    preview.textContent = "Uploading mobile slider images...";
-    try {
-      const urls = [];
-      for (const file of files) urls.push(await uploadImage(file, "hero-mobile-slides"));
-      let existing = [];
-      try { existing = JSON.parse(settings.hero_mobile_slides || "[]"); } catch {}
-      uploadedSettingsImages.hero_mobile_slides = JSON.stringify([...existing, ...urls].slice(0, 10));
-      preview.innerHTML = [...existing, ...urls].map((url, index) => `<span class="admin-image-thumb"><img src="${escapeHTML(url)}" alt="Mobile hero slide"><button type="button" data-mobile-slide-remove="${index}" aria-label="Remove slide">×</button></span>`).join("");
-      notify("Mobile hero slider images uploaded.");
-    } catch (error) { preview.textContent = ""; notify(error.message, true); }
-    finally { event.target.value = ""; }
-  });
-
-  $("#settingsForm")?.addEventListener("click", event => {
-    const clear = event.target.closest("[data-clear-setting]");
-    if (clear) {
-      const key = clear.dataset.clearSetting;
-      uploadedSettingsImages[key] = "";
-      const config = Object.values(settingFileFields).find(item => item.key === key);
-      if (config) $("#" + config.preview).innerHTML = "";
-    }
-    const removeMobileSlide = event.target.closest("[data-mobile-slide-remove]");
-    if (removeMobileSlide) {
-      let slides = [];
-      try { slides = JSON.parse(uploadedSettingsImages.hero_mobile_slides || settings.hero_mobile_slides || "[]"); } catch {}
-      slides.splice(Number(removeMobileSlide.dataset.mobileSlideRemove), 1);
-      uploadedSettingsImages.hero_mobile_slides = JSON.stringify(slides);
-      const preview = $("#heroMobileSlidesPreview");
-      if (preview) preview.innerHTML = slides.map((url, index) => `<span class="admin-image-thumb"><img src="${escapeHTML(url)}" alt="Mobile hero slide"><button type="button" data-mobile-slide-remove="${index}" aria-label="Remove slide">×</button></span>`).join("");
-    }
-    const removeSlide = event.target.closest("[data-hero-slide-remove]");
-    if (removeSlide) {
-      let slides = [];
-      try { slides = JSON.parse(uploadedSettingsImages.hero_slides || settings.hero_slides || "[]"); } catch {}
-      slides.splice(Number(removeSlide.dataset.heroSlideRemove), 1);
-      uploadedSettingsImages.hero_slides = JSON.stringify(slides);
-      const preview = $("#heroSlidesPreview");
-      if (preview) preview.innerHTML = slides.map((url, index) => `<span class="admin-image-thumb"><img src="${escapeHTML(url)}" alt="Hero slide"><button type="button" data-hero-slide-remove="${index}" aria-label="Remove slide">×</button></span>`).join("");
-    }
   });
 
   $("#settingsForm")?.addEventListener("submit", async event => {
@@ -1457,10 +1274,5 @@
   setupNavigation();
   installReviewsTab();
   checkSession();
-  if (!orderPollTimer) {
-    orderPollTimer = setInterval(() => {
-      if (!document.hidden && $("#dashboard") && !$("#dashboard").hidden) loadAdmin();
-    }, 20000);
-  }
 
 })();
