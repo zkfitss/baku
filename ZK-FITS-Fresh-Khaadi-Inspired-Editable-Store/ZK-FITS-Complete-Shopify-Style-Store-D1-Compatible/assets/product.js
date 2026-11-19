@@ -142,12 +142,14 @@
   }
 
   function getCurrentStock() {
-    const variant = getAvailableVariant();
-
     if (state.variants.length) {
-      return variant ? variant.stock : 0;
+      const matchingInStock = state.variants.find(item =>
+        (!state.selectedSize || String(item.size || "") === state.selectedSize) &&
+        (!state.selectedColor || String(item.color || "") === state.selectedColor) &&
+        Number(item.stock) > 0
+      );
+      return matchingInStock ? Number(matchingInStock.stock) : 0;
     }
-
     return Math.max(0, Number(state.product?.stock || 0));
   }
 
@@ -402,7 +404,6 @@
     container.querySelectorAll("[data-size]").forEach(button => button.addEventListener("click", () => {
       state.selectedSize = button.dataset.size;
       if (state.selectedColor && state.variants.length && !state.variants.some(v => v.size === state.selectedSize && v.color === state.selectedColor && v.stock > 0)) state.selectedColor = "";
-      state.imageIndex = 0;
       updateVariantUI();
     }));
     container.querySelectorAll("[data-color]").forEach(button => button.addEventListener("click", () => {
@@ -461,10 +462,8 @@
     const buyButton = $("buyNowButton");
 
     if (availability) {
-      if (!hasSelection) {
-        availability.textContent =
-          "Please select your size and colour.";
-
+      if (!hasSelection && stock > 0) {
+        availability.textContent = "Size and colour are optional. You can continue without selecting.";
         availability.className = "product-availability";
 
       } else if (stock <= 0) {
@@ -483,7 +482,6 @@
       }
     }
 
-    // Variant selection is optional: keep purchase actions enabled while stock exists.
     const disabled = stock <= 0;
 
     if (addButton) addButton.disabled = disabled;
@@ -816,8 +814,25 @@
     }
 
     const cart = readCart();
-    const size = state.selectedSize;
-    const color = state.selectedColor;
+    let size = state.selectedSize;
+    let color = state.selectedColor;
+    // If the shopper skips variant choices, use the first in-stock combination
+    // so inventory remains accurate and the cart/order contains a real variant.
+    if (state.variants.length && (!size || !color)) {
+      const matchingVariant = state.variants.find(variant =>
+        Number(variant.stock) > 0 &&
+        (!size || String(variant.size || "") === size) &&
+        (!color || String(variant.color || "") === color)
+      );
+      if (matchingVariant) {
+        size = size || matchingVariant.size || "";
+        color = color || matchingVariant.color || "";
+        state.selectedSize = size;
+        state.selectedColor = color;
+        renderVariants();
+        showToast("An available size/colour has been selected for your order.");
+      }
+    }
 
     const existing = cart.find(item =>
       String(item.id) === String(product.id) &&
@@ -876,11 +891,22 @@
   }
 
   function buyNow() {
+    const button = $("buyNowButton");
     if (!addProductToCart()) return;
-
+    if (button) {
+      button.classList.add("is-pressed");
+      button.setAttribute("aria-busy", "true");
+      button.textContent = "PROCESSING...";
+    }
     openExistingCart();
-
-    $("checkoutButton")?.click();
+    window.setTimeout(() => {
+      $("checkoutButton")?.click();
+      if (button) {
+        button.classList.remove("is-pressed");
+        button.removeAttribute("aria-busy");
+        button.textContent = "BUY IT NOW";
+      }
+    }, 180);
   }
 
   /* =========================================
@@ -1211,6 +1237,21 @@
         if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.2) moveGallery(dx < 0 ? 1 : -1);
       }, { passive: true });
       gallery.addEventListener("touchcancel", () => { tracking = false; }, { passive: true });
+      const image = $("mainProductImage");
+      if (image) {
+        let lastTap=0, zoomed=false, pinchStart=0, pinchScale=1, mouseX=0, mouseDown=false;
+        image.style.transformOrigin="center center";
+        image.style.transition="transform .18s ease";
+        image.style.cursor="zoom-in";
+        const applyZoom = scale => { pinchScale=Math.max(1,Math.min(3,scale)); zoomed=pinchScale>1.02; image.style.transform=`scale(${pinchScale})`; image.style.cursor=zoomed?"zoom-out":"zoom-in"; };
+        image.addEventListener("click",()=>{ const now=Date.now(); if(now-lastTap<320) applyZoom(zoomed?1:2); lastTap=now; });
+        gallery.addEventListener("touchstart",e=>{ if(e.touches.length===2){ pinchStart=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY); } },{passive:true});
+        gallery.addEventListener("touchmove",e=>{ if(e.touches.length===2 && pinchStart){ const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY); applyZoom(d/pinchStart); } },{passive:true});
+        gallery.addEventListener("touchend",e=>{ if(e.touches.length<2) pinchStart=0; },{passive:true});
+        gallery.addEventListener("pointerdown",e=>{if(e.pointerType==="mouse"){mouseX=e.clientX;mouseDown=true;}});
+        gallery.addEventListener("pointerup",e=>{if(!mouseDown||e.pointerType!=="mouse")return;mouseDown=false;const dx=e.clientX-mouseX;if(Math.abs(dx)>45)moveGallery(dx<0?1:-1);});
+        gallery.addEventListener("pointerleave",()=>{mouseDown=false;});
+      }
     }
   }
 
