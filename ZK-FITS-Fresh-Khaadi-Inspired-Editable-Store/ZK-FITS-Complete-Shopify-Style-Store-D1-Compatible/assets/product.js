@@ -402,6 +402,7 @@
     container.querySelectorAll("[data-size]").forEach(button => button.addEventListener("click", () => {
       state.selectedSize = button.dataset.size;
       if (state.selectedColor && state.variants.length && !state.variants.some(v => v.size === state.selectedSize && v.color === state.selectedColor && v.stock > 0)) state.selectedColor = "";
+      state.imageIndex = 0;
       updateVariantUI();
     }));
     container.querySelectorAll("[data-color]").forEach(button => button.addEventListener("click", () => {
@@ -482,7 +483,8 @@
       }
     }
 
-    const disabled = !hasSelection || stock <= 0;
+    // Variant selection is optional: keep purchase actions enabled while stock exists.
+    const disabled = stock <= 0;
 
     if (addButton) addButton.disabled = disabled;
     if (buyButton) buyButton.disabled = disabled;
@@ -805,14 +807,6 @@
 
     if (stock <= 0) {
       showToast("This product is currently out of stock.");
-      return false;
-    }
-
-    if (
-      (state.sizes.length && !state.selectedSize) ||
-      (state.colors.length && !state.selectedColor)
-    ) {
-      showToast("Please select size and colour first.");
       return false;
     }
 
@@ -1191,42 +1185,33 @@
      ========================================= */
 
   function setupGallery() {
-    $("galleryPrev")?.addEventListener("click", () => moveGallery(-1));
-    $("galleryNext")?.addEventListener("click", () => moveGallery(1));
+    $("galleryPrev")?.addEventListener("click", () => {
+      moveGallery(-1);
+    });
 
-    // Pointer events cover touch, pen and mouse without opening/zooming the image.
-    const gallery = $("mainProductImage")?.closest(".product-main-image");
-    if (!gallery || gallery.dataset.galleryPointerBound) return;
-    gallery.dataset.galleryPointerBound = "1";
+    $("galleryNext")?.addEventListener("click", () => {
+      moveGallery(1);
+    });
 
-    let startX = 0;
-    let startY = 0;
-    let activePointer = null;
-
-    gallery.addEventListener("pointerdown", event => {
-      if (event.pointerType === "mouse" && event.button !== 0) return;
-      if (event.target.closest("button")) return;
-      activePointer = event.pointerId;
-      startX = event.clientX;
-      startY = event.clientY;
-    }, { passive: true });
-
-    gallery.addEventListener("pointerup", event => {
-      if (activePointer === null || event.pointerId !== activePointer) return;
-      activePointer = null;
-      const dx = event.clientX - startX;
-      const dy = event.clientY - startY;
-      if (Math.abs(dx) >= 40 && Math.abs(dx) > Math.abs(dy) * 1.15) {
-        moveGallery(dx < 0 ? 1 : -1);
-      }
-    }, { passive: true });
-
-    const cancelSwipe = () => { activePointer = null; };
-    gallery.addEventListener("pointercancel", cancelSwipe, { passive: true });
-    gallery.addEventListener("lostpointercapture", cancelSwipe, { passive: true });
-    const image = $("mainProductImage");
-    image?.addEventListener("dragstart", event => event.preventDefault());
-    image?.addEventListener("click", event => event.preventDefault());
+    const gallery = $(".product-main-image");
+    if (gallery && !gallery.dataset.swipeBound) {
+      gallery.dataset.swipeBound = "1";
+      let startX = 0, startY = 0, tracking = false;
+      gallery.addEventListener("touchstart", event => {
+        if (!event.touches || event.touches.length !== 1) return;
+        startX = event.touches[0].clientX;
+        startY = event.touches[0].clientY;
+        tracking = true;
+      }, { passive: true });
+      gallery.addEventListener("touchend", event => {
+        if (!tracking || !event.changedTouches?.length) return;
+        tracking = false;
+        const dx = event.changedTouches[0].clientX - startX;
+        const dy = event.changedTouches[0].clientY - startY;
+        if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.2) moveGallery(dx < 0 ? 1 : -1);
+      }, { passive: true });
+      gallery.addEventListener("touchcancel", () => { tracking = false; }, { passive: true });
+    }
   }
 
   /* =========================================
