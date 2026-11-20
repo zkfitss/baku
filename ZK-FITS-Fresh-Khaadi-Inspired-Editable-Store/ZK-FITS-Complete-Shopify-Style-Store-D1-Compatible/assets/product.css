@@ -1,4 +1,4 @@
-/* ZK FITS — Product Detail Page */
+/* ZK FITSS — Product Detail Page */
 
 :root {
   --product-bg: #fbf8f3;
@@ -679,7 +679,7 @@ body.product-page {
   }
 }
 /* ==========================================
-   ZK FITS PRODUCT PAGE — HTML COMPATIBILITY FIX
+   ZK FITSS PRODUCT PAGE — HTML COMPATIBILITY FIX
    ========================================== */
 
 .product-detail-section {
@@ -853,7 +853,7 @@ body.product-page {
 @media(max-width:700px) { .product-main-image { aspect-ratio:auto; } .product-main-image img { max-height:none; } }
 
 
-/* ZK FITS product page responsive refinements */
+/* ZK FITSS product page responsive refinements */
 .product-description-after-options {
   margin: 24px 0 18px;
   color: var(--product-muted);
@@ -957,7 +957,7 @@ body.product-page {
 @media(max-width:650px) { .reviews-section { margin:48px auto; } .reviews-list { grid-template-columns:1fr; } #reviewForm { grid-template-columns:1fr; gap:6px; } #reviewForm label,#reviewForm input,#reviewForm select,#reviewForm textarea { grid-column:1/-1; } .reviews-average { width:100%; } }
 
 
-/* ZK FITS gallery fix: fixed image stage, stable image sizing and responsive controls. */
+/* ZK FITSS gallery fix: fixed image stage, stable image sizing and responsive controls. */
 .product-main-image {
   position: relative !important;
   display: flex !important;

@@ -70,6 +70,152 @@ function cookieHeader(value, maxAge) {
   };
 }
 
+
+function analyticsDevice(userAgent = "") {
+  const ua = String(userAgent).toLowerCase();
+  if (/tablet|ipad/.test(ua)) return "tablet";
+  if (/mobile|android|iphone/.test(ua)) return "mobile";
+  if (/windows|macintosh|linux|cros/.test(ua)) return "desktop";
+  return "unknown";
+}
+
+async function saveAnalyticsEvent(env, request, data = {}, forced = {}) {
+  const allowed = new Set(["page_view", "product_view", "add_to_cart", "checkout_start", "purchase", "purchase_item"]);
+  const eventName = forced.event_name || String(data.event_name || "");
+  if (!allowed.has(eventName)) return;
+  const cf = request.cf || {};
+  const clean = (value, max = 180) => String(value || "").trim().slice(0, max);
+  const sessionId = clean(forced.session_id || data.session_id, 80);
+  await env.DB.prepare(`
+    INSERT INTO analytics_events (
+      id,event_name,session_id,page_path,page_title,referrer,source,medium,campaign,
+      landing_page,product_id,product_name,order_id,value,city,country,device,created_at
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+  `).bind(
+    makeId(), eventName, sessionId,
+    clean(data.page_path, 300), clean(data.page_title, 180), clean(data.referrer, 180),
+    clean(data.source || "direct", 100), clean(data.medium || "none", 100), clean(data.campaign, 120),
+    clean(data.landing_page, 300), clean(forced.product_id || data.product_id, 100),
+    clean(forced.product_name || data.product_name, 180), clean(forced.order_id, 80),
+    Number(forced.value ?? data.value) || 0,
+    clean(cf.city, 100), clean(cf.country, 2), analyticsDevice(request.headers.get("User-Agent")),
+    new Date().toISOString()
+  ).run();
+}
+
+async function maintainAnalyticsRetention(env) {
+  // Run at most once every 24 hours when an authenticated admin opens Analytics.
+  const state = await env.DB.prepare("SELECT value FROM analytics_maintenance WHERE key='last_retention_run'").first().catch(() => null);
+  const lastRun = state?.value ? Date.parse(state.value) : 0;
+  if (lastRun && Date.now() - lastRun < 24 * 60 * 60 * 1000) return state.value;
+
+  const months = await env.DB.prepare(`
+    SELECT DISTINCT substr(created_at,1,7) AS month
+    FROM analytics_events
+    WHERE created_at < datetime('now','-90 days')
+    ORDER BY month ASC
+  `).all();
+
+  for (const item of (months.results || [])) {
+    const month = String(item.month || '');
+    if (!/^\d{4}-\d{2}$/.test(month)) continue;
+    const counts = await env.DB.prepare(`
+      SELECT
+        COUNT(CASE WHEN event_name='page_view' THEN 1 END) AS page_views,
+        COUNT(CASE WHEN event_name='product_view' THEN 1 END) AS product_views,
+        COUNT(CASE WHEN event_name='add_to_cart' THEN 1 END) AS add_to_cart_events,
+        COUNT(CASE WHEN event_name='checkout_start' THEN 1 END) AS checkout_start_events
+      FROM analytics_events
+      WHERE substr(created_at,1,7)=? AND created_at < datetime('now','-90 days')
+    `).bind(month).first();
+
+    // D1 batch is transactional: only delete detailed rows if their compacted
+    // monthly counts, unique sessions and purchase attribution are saved.
+    await env.DB.batch([
+      env.DB.prepare(`
+        INSERT INTO analytics_monthly_summary(month,page_views,product_views,add_to_cart_events,checkout_start_events,updated_at)
+        VALUES(?,?,?,?,?,?)
+        ON CONFLICT(month) DO UPDATE SET
+          page_views=page_views+excluded.page_views,
+          product_views=product_views+excluded.product_views,
+          add_to_cart_events=add_to_cart_events+excluded.add_to_cart_events,
+          checkout_start_events=checkout_start_events+excluded.checkout_start_events,
+          updated_at=excluded.updated_at
+      `).bind(month, Number(counts?.page_views || 0), Number(counts?.product_views || 0), Number(counts?.add_to_cart_events || 0), Number(counts?.checkout_start_events || 0), new Date().toISOString()),
+      env.DB.prepare(`
+        INSERT OR IGNORE INTO analytics_monthly_sessions(month,session_id)
+        SELECT ?,session_id FROM analytics_events
+        WHERE substr(created_at,1,7)=? AND created_at < datetime('now','-90 days') AND session_id<>''
+      `).bind(month, month),
+      env.DB.prepare(`
+        INSERT OR IGNORE INTO analytics_monthly_source_orders(month,order_id,source,medium,session_id)
+        SELECT ?,order_id,COALESCE(NULLIF(source,''),'direct'),COALESCE(NULLIF(medium,''),'none'),session_id
+        FROM analytics_events
+        WHERE substr(created_at,1,7)=? AND created_at < datetime('now','-90 days')
+          AND event_name='purchase' AND order_id<>''
+      `).bind(month, month),
+      env.DB.prepare(`
+        DELETE FROM analytics_events
+        WHERE substr(created_at,1,7)=? AND created_at < datetime('now','-90 days')
+      `).bind(month)
+    ]);
+  }
+
+  const completedAt = new Date().toISOString();
+  await env.DB.prepare(`INSERT INTO analytics_maintenance(key,value) VALUES('last_retention_run',?)
+    ON CONFLICT(key) DO UPDATE SET value=excluded.value`).bind(completedAt).run();
+  return completedAt;
+}
+
+async function getAnalyticsStorage(env) {
+  const row = await env.DB.prepare(`
+    SELECT COUNT(*) AS event_count,
+      COALESCE(SUM(length(id)+length(event_name)+length(session_id)+length(page_path)+length(page_title)+length(referrer)+length(source)+length(medium)+length(campaign)+length(landing_page)+length(product_id)+length(product_name)+length(order_id)+length(city)+length(country)+length(device)+32),0) AS estimated_event_bytes
+    FROM analytics_events
+  `).first();
+  const [sessions, months, sourceOrders, maintenance] = await Promise.all([
+    env.DB.prepare('SELECT COUNT(*) AS count FROM analytics_monthly_sessions').first(),
+    env.DB.prepare('SELECT COUNT(*) AS count FROM analytics_monthly_summary').first(),
+    env.DB.prepare('SELECT COUNT(*) AS count FROM analytics_monthly_source_orders').first(),
+    env.DB.prepare("SELECT value FROM analytics_maintenance WHERE key='last_retention_run'").first()
+  ]);
+  const eventBytes = Number(row?.estimated_event_bytes || 0);
+  const archiveBytes = Number(sessions?.count || 0) * 48 + Number(sourceOrders?.count || 0) * 100 + Number(months?.count || 0) * 80;
+  return {
+    event_count: Number(row?.event_count || 0),
+    archived_sessions: Number(sessions?.count || 0),
+    archived_months: Number(months?.count || 0),
+    archived_source_orders: Number(sourceOrders?.count || 0),
+    estimated_bytes: eventBytes + archiveBytes,
+    estimated_mb: Number(((eventBytes + archiveBytes) / (1024 * 1024)).toFixed(2)),
+    last_retention_run: maintenance?.value || null,
+    detailed_retention_days: 90,
+    note: 'Estimated analytics payload only; excludes SQLite indexes, database overhead and other store tables.'
+  };
+}
+
+async function getMonthlyAnalytics(env) {
+  const [summaryResult, orderResult, sourceResult] = await Promise.all([
+    env.DB.prepare(`SELECT s.month,s.page_views,s.product_views,s.add_to_cart_events,s.checkout_start_events,
+      (SELECT COUNT(*) FROM analytics_monthly_sessions v WHERE v.month=s.month) AS visitors
+      FROM analytics_monthly_summary s ORDER BY s.month DESC LIMIT 24`).all(),
+    env.DB.prepare(`SELECT substr(created_at,1,7) AS month,COUNT(*) AS orders,
+      COUNT(CASE WHEN status='Cancelled' THEN 1 END) AS cancelled,
+      COALESCE(SUM(CASE WHEN status<>'Cancelled' THEN total ELSE 0 END),0) AS revenue
+      FROM orders WHERE created_at >= date('now','-24 months') GROUP BY substr(created_at,1,7)`).all(),
+    env.DB.prepare(`SELECT a.month,a.source,a.medium,COUNT(*) AS orders,
+      COALESCE(SUM(CASE WHEN o.status<>'Cancelled' THEN o.total ELSE 0 END),0) AS revenue
+      FROM analytics_monthly_source_orders a LEFT JOIN orders o ON o.id=a.order_id
+      GROUP BY a.month,a.source,a.medium ORDER BY a.month DESC`).all()
+  ]);
+  const orders = new Map((orderResult.results || []).map(row => [row.month, row]));
+  const monthly = (summaryResult.results || []).map(row => {
+    const order = orders.get(row.month) || {};
+    return { ...row, orders:Number(order.orders || 0), cancelled:Number(order.cancelled || 0), revenue:Number(order.revenue || 0) };
+  });
+  return { monthly, monthly_sources:sourceResult.results || [] };
+}
+
 function cleanProduct(product) {
   return {
     ...product,
@@ -128,7 +274,7 @@ async function sendEmail(env, { to, subject, html, replyTo, from }) {
     return { sent: false, reason: "RESEND_API_KEY is not configured." };
   }
 
-  const sender = from || env.EMAIL_FROM || "ZK FITS <orders@zkfitss.com>";
+  const sender = from || env.EMAIL_FROM || "ZK FITSS <orders@zkfitss.com>";
 
   try {
     const response = await fetch("https://api.resend.com/emails", {
@@ -193,7 +339,7 @@ async function sendOrderEmails(env, order) {
   const details = `
     <div style="font-family:Arial,sans-serif;color:#292521;max-width:650px;margin:auto">
       <div style="background:#292521;color:white;padding:24px;text-align:center">
-        <h1 style="margin:0;letter-spacing:3px">ZK FITS</h1>
+        <h1 style="margin:0;letter-spacing:3px">ZK FITSS</h1>
       </div>
       <div style="padding:24px">
         <h2>Order #${escapeHTML(order.id)}</h2>
@@ -229,20 +375,20 @@ async function sendOrderEmails(env, order) {
   `;
 
   const adminHtml = `
-    <h2>New order received - ZK FITS</h2>
+    <h2>New order received - ZK FITSS</h2>
     ${details}
   `;
 
   const results = await Promise.all([
     sendEmail(env, {
       to: order.customer_email,
-      subject: "ZK FITS - Order received #" + order.id,
+      subject: "ZK FITSS - Order received #" + order.id,
       html: customerHtml.replace("Your order has been received successfully.", "We have received your order. It is currently awaiting confirmation by our team."),
       from: sender
     }),
     sendEmail(env, {
       to: adminEmail,
-      subject: "New ZK FITS Order #" + order.id,
+      subject: "New ZK FITSS Order #" + order.id,
       html: adminHtml,
       replyTo: order.customer_email,
       from: sender
@@ -502,7 +648,6 @@ async function createOrder(request, env) {
   const total = subtotal + shipping;
   const orderId = makeId();
   const createdAt = new Date().toISOString();
-
   const statements = [];
 
   for (const [productId, updated] of updatedProducts.entries()) {
@@ -542,6 +687,33 @@ async function createOrder(request, env) {
 
   await env.DB.batch(statements);
   const savedOrderId = orderId;
+  const attribution = data.attribution && typeof data.attribution === "object" ? data.attribution : {};
+  const purchaseMeta = {
+    session_id: String(attribution.session_id || "").slice(0, 80),
+    source: String(attribution.source || "direct").slice(0, 100),
+    medium: String(attribution.medium || "none").slice(0, 100),
+    campaign: String(attribution.campaign || "").slice(0, 120),
+    referrer: String(attribution.referrer || "").slice(0, 180),
+    landing_page: String(attribution.landing_page || "/").slice(0, 300),
+    page_path: "/",
+    page_title: "ZK FITSS"
+  };
+  try {
+    await saveAnalyticsEvent(env, request, purchaseMeta, {
+      event_name: "purchase", order_id: savedOrderId, value: total,
+      session_id: purchaseMeta.session_id
+    });
+    for (const line of orderItems) {
+      await saveAnalyticsEvent(env, request, purchaseMeta, {
+        event_name: "purchase_item", order_id: savedOrderId,
+        product_id: line.id, product_name: line.title,
+        value: Number(line.price || 0) * Number(line.quantity || 1),
+        session_id: purchaseMeta.session_id
+      });
+    }
+  } catch (analyticsError) {
+    console.error("Analytics purchase event failed", analyticsError);
+  }
 
   const emailResults = await sendOrderEmails(env, {
     id: savedOrderId,
@@ -703,6 +875,18 @@ export async function onRequest({ request, env }) {
         : json({ error: "Unauthorized." }, 401);
     }
 
+    // PUBLIC FIRST-PARTY ANALYTICS EVENT COLLECTOR
+    if (path[0] === "events" && method === "POST") {
+      const data = await readBody(request);
+      const eventName = String(data.event_name || "");
+      if (!["page_view", "product_view", "add_to_cart", "checkout_start"].includes(eventName)) {
+        return json({ error: "Invalid analytics event." }, 400);
+      }
+      try { await saveAnalyticsEvent(env, request, data); }
+      catch (error) { console.error("Analytics event failed", error); return json({ ok: false }, 202); }
+      return json({ ok: true }, 202);
+    }
+
     // CUSTOMER STOREFRONT DATA
     if (path[0] === "store" && method === "GET") {
       const [products, settings] = await Promise.all([
@@ -812,6 +996,32 @@ export async function onRequest({ request, env }) {
     // OTHER ROUTES REQUIRE ADMIN LOGIN
     if (!isAdmin(request, token)) {
       return json({ error: "Unauthorized." }, 401);
+    }
+
+    // ADMIN ANALYTICS REPORT
+    if (path[0] === "analytics" && method === "GET") {
+      let retentionLastRun = null;
+      let retentionWarning = "";
+      try { retentionLastRun = await maintainAnalyticsRetention(env); }
+      catch (error) { console.error("Analytics retention maintenance failed", error); retentionWarning = "Automatic retention cleanup could not complete. Check that migration 0006 has been applied."; }
+      const [storage, archive] = await Promise.all([
+        getAnalyticsStorage(env).catch(error => { console.error("Analytics storage summary failed", error); return null; }),
+        getMonthlyAnalytics(env).catch(error => { console.error("Monthly analytics failed", error); return { monthly:[], monthly_sources:[] }; })
+      ]);
+      const days = Math.min(365, Math.max(1, Number(url.searchParams.get("days") || 30)));
+      const modifier = `-${days} days`;
+      const [trafficSummary, orderSummary, sources, locations, pages, topProducts, daily, devices, funnel] = await Promise.all([
+        env.DB.prepare(`SELECT COUNT(CASE WHEN event_name='page_view' THEN 1 END) AS page_views, COUNT(DISTINCT CASE WHEN event_name IN ('page_view','product_view','add_to_cart','checkout_start') THEN session_id END) AS visitors, COUNT(DISTINCT CASE WHEN event_name='add_to_cart' THEN session_id END) AS carts, COUNT(DISTINCT CASE WHEN event_name='checkout_start' THEN session_id END) AS checkouts FROM analytics_events WHERE created_at >= datetime('now', ?)` ).bind(modifier).first(),
+        env.DB.prepare(`SELECT COUNT(*) AS orders, COALESCE(SUM(CASE WHEN status <> 'Cancelled' THEN total ELSE 0 END),0) AS revenue, COUNT(CASE WHEN status='Cancelled' THEN 1 END) AS cancelled FROM orders WHERE created_at >= datetime('now', ?)`).bind(modifier).first(),
+        env.DB.prepare(`SELECT e.source, e.medium, COUNT(DISTINCT e.session_id) AS visitors, COUNT(*) AS orders, COALESCE(SUM(CASE WHEN o.status <> 'Cancelled' THEN o.total ELSE 0 END),0) AS revenue FROM analytics_events e JOIN orders o ON o.id=e.order_id WHERE e.event_name='purchase' AND o.created_at >= datetime('now', ?) GROUP BY e.source,e.medium ORDER BY orders DESC LIMIT 12`).bind(modifier).all(),
+        env.DB.prepare(`SELECT COALESCE(NULLIF(e.city,''),'Unknown') AS city, COALESCE(NULLIF(e.country,''),'Unknown') AS country, COUNT(DISTINCT e.session_id) AS visitors, COUNT(DISTINCT CASE WHEN e.event_name='purchase' AND o.status <> 'Cancelled' THEN o.id END) AS orders FROM analytics_events e LEFT JOIN orders o ON o.id=e.order_id WHERE e.created_at >= datetime('now', ?) GROUP BY city,country ORDER BY visitors DESC LIMIT 12`).bind(modifier).all(),
+        env.DB.prepare(`SELECT page_path, COUNT(*) AS views, COUNT(DISTINCT session_id) AS visitors FROM analytics_events WHERE event_name IN ('page_view','product_view') AND created_at >= datetime('now', ?) GROUP BY page_path ORDER BY views DESC LIMIT 12`).bind(modifier).all(),
+        env.DB.prepare(`SELECT e.product_id, COALESCE(MAX(e.product_name),'') AS product_name, COUNT(CASE WHEN e.event_name='product_view' THEN 1 END) AS views, COUNT(CASE WHEN e.event_name='add_to_cart' THEN 1 END) AS add_to_carts, COUNT(CASE WHEN e.event_name='purchase_item' AND o.status <> 'Cancelled' THEN 1 END) AS units_sold, COALESCE(SUM(CASE WHEN e.event_name='purchase_item' AND o.status <> 'Cancelled' THEN e.value ELSE 0 END),0) AS sales FROM analytics_events e LEFT JOIN orders o ON o.id=e.order_id WHERE e.created_at >= datetime('now', ?) AND e.product_id <> '' GROUP BY e.product_id ORDER BY views DESC LIMIT 12`).bind(modifier).all(),
+        env.DB.prepare(`SELECT d.day, d.views, d.visitors, COALESCE(o.orders,0) AS orders, COALESCE(o.revenue,0) AS revenue FROM (SELECT substr(created_at,1,10) AS day, COUNT(CASE WHEN event_name='page_view' THEN 1 END) AS views, COUNT(DISTINCT CASE WHEN event_name IN ('page_view','product_view','add_to_cart','checkout_start') THEN session_id END) AS visitors FROM analytics_events WHERE created_at >= datetime('now', ?) GROUP BY day) d LEFT JOIN (SELECT substr(created_at,1,10) AS day, COUNT(*) AS orders, COALESCE(SUM(CASE WHEN status <> 'Cancelled' THEN total ELSE 0 END),0) AS revenue FROM orders WHERE created_at >= datetime('now', ?) GROUP BY day) o ON o.day=d.day ORDER BY d.day ASC`).bind(modifier, modifier).all(),
+        env.DB.prepare(`SELECT device, COUNT(DISTINCT session_id) AS visitors FROM analytics_events WHERE created_at >= datetime('now', ?) GROUP BY device ORDER BY visitors DESC`).bind(modifier).all(),
+        env.DB.prepare(`SELECT event_name, COUNT(DISTINCT session_id) AS sessions FROM analytics_events WHERE created_at >= datetime('now', ?) GROUP BY event_name`).bind(modifier).all()
+      ]);
+      return json({ ok:true, days, summary: { ...(trafficSummary || {}), ...(orderSummary || {}) }, sources:sources.results||[], locations:locations.results||[], pages:pages.results||[], products:topProducts.results||[], daily:daily.results||[], devices:devices.results||[], funnel:funnel.results||[], storage, monthly:archive.monthly, monthly_sources:archive.monthly_sources, retention_last_run:retentionLastRun, retention_warning:retentionWarning });
     }
 
     // ADMIN REVIEW LIST
@@ -986,9 +1196,9 @@ export async function onRequest({ request, env }) {
       if (data.status === "Confirmed" && existing.status !== "Confirmed") {
         const items = parseJSON(existing.items, []);
         const rows = items.map(item => `<tr><td style="padding:10px;border-bottom:1px solid #eee">${escapeHTML(item.title || item.name || "Product")} ${item.size ? `<br>Size: ${escapeHTML(item.size)}` : ""} ${item.color ? `<br>Colour: ${escapeHTML(item.color)}` : ""}</td><td style="padding:10px;text-align:center">${Number(item.quantity || item.qty || 1)}</td><td style="padding:10px;text-align:right">PKR ${(Number(item.price || 0) * Number(item.quantity || item.qty || 1)).toLocaleString("en-PK")}</td></tr>`).join("");
-        const html = `<div style="font-family:Arial,sans-serif;color:#292521;max-width:640px;margin:auto"><div style="background:#292521;color:white;padding:22px;text-align:center"><h1>ZK FITS</h1></div><div style="padding:24px"><h2>Your order is confirmed!</h2><p>Dear ${escapeHTML(existing.customer_name)}, your order #${escapeHTML(existing.id)} has been confirmed by ZK FITS.</p><table style="width:100%;border-collapse:collapse"><tbody>${rows}</tbody></table><h3 style="text-align:right">Total: PKR ${Number(existing.total || 0).toLocaleString("en-PK")}</h3><p>We will update you when your order is shipped.</p></div></div>`;
+        const html = `<div style="font-family:Arial,sans-serif;color:#292521;max-width:640px;margin:auto"><div style="background:#292521;color:white;padding:22px;text-align:center"><h1>ZK FITSS</h1></div><div style="padding:24px"><h2>Your order is confirmed!</h2><p>Dear ${escapeHTML(existing.customer_name)}, your order #${escapeHTML(existing.id)} has been confirmed by ZK FITSS.</p><table style="width:100%;border-collapse:collapse"><tbody>${rows}</tbody></table><h3 style="text-align:right">Total: PKR ${Number(existing.total || 0).toLocaleString("en-PK")}</h3><p>We will update you when your order is shipped.</p></div></div>`;
         const settings = await getSettings(env);
-        customerEmail = await sendEmail(env, { to: existing.customer_email, subject: `ZK FITS - Your order #${existing.id} is confirmed`, html, from: env.EMAIL_FROM || settings.email_from || undefined, replyTo: env.ADMIN_EMAIL || settings.admin_email || DEFAULT_ADMIN_EMAIL });
+        customerEmail = await sendEmail(env, { to: existing.customer_email, subject: `ZK FITSS - Your order #${existing.id} is confirmed`, html, from: env.EMAIL_FROM || settings.email_from || undefined, replyTo: env.ADMIN_EMAIL || settings.admin_email || DEFAULT_ADMIN_EMAIL });
       }
 
       return json({ ok: true, customer_email_sent: customerEmail.sent, email_message: customerEmail.reason || "Confirmation email processed." });
@@ -997,6 +1207,18 @@ export async function onRequest({ request, env }) {
     // SAVE STORE SETTINGS
     if (path[0] === "settings" && method === "PUT") {
       const data = await readBody(request);
+      const marketingRules = {
+        marketing_ga4_id: /^$|^G-[A-Z0-9]+$/i,
+        marketing_google_ads_id: /^$|^AW-[0-9]+$/i,
+        marketing_google_ads_label: /^[A-Za-z0-9_-]{0,160}$/,
+        marketing_meta_pixel_id: /^$|^[0-9]{5,30}$/,
+        marketing_tiktok_pixel_id: /^$|^[A-Za-z0-9_-]{3,100}$/
+      };
+      for (const [key, rule] of Object.entries(marketingRules)) {
+        if (Object.prototype.hasOwnProperty.call(data, key) && !rule.test(String(data[key] ?? '').trim())) {
+          return json({ error: `Invalid value for ${key}. Please check the platform ID format.` }, 400);
+        }
+      }
 
       const statements = Object.entries(data).map(([key, value]) =>
         env.DB.prepare(`

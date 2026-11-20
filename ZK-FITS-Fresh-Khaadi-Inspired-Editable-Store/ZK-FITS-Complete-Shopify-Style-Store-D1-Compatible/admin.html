@@ -4,7 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#292522">
-  <title>ZK FITS | Store Admin</title>
+  <meta name="robots" content="noindex,nofollow">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <title>ZK FITSS | Store Admin</title>
   <link rel="stylesheet" href="/assets/admin.css">
 </head>
 <body>
@@ -12,7 +16,7 @@
 <!-- ADMIN LOGIN -->
 <section id="login" class="login-wrap">
   <form class="login-card" id="loginForm">
-    <p class="eyebrow">ZK FITS STORE MANAGEMENT</p>
+    <p class="eyebrow">ZK FITSS STORE MANAGEMENT</p>
     <h1>Welcome Back</h1>
     <p>Sign in to manage your online store.</p>
 
@@ -32,11 +36,12 @@
   <!-- SIDEBAR -->
   <aside class="sidebar">
     <div class="admin-brand">
-      ZK FITS
+      ZK FITSS
       <small>STORE ADMINISTRATION</small>
     </div>
 
     <button class="active" data-tab="overview">Overview</button>
+    <button data-tab="analytics">Analytics</button>
     <button data-tab="products">Products</button>
     <button data-tab="orders">Customer Orders</button>
     <button data-tab="settings">Store Customization</button>
@@ -50,7 +55,7 @@
 
     <header class="admin-top">
       <div>
-        <p class="eyebrow">ZK FITS MANAGEMENT</p>
+        <p class="eyebrow">ZK FITSS MANAGEMENT</p>
         <h1 id="pageTitle">Overview</h1>
       </div>
       <span class="status">ADMIN PANEL</span>
@@ -80,11 +85,23 @@
         </article>
       </div>
 
-      <h2>Welcome to ZK FITS</h2>
+      <h2>Welcome to ZK FITSS</h2>
       <p>
         Manage products, inventory, customer orders, reviews,
         banners, logo, website design and store settings.
       </p>
+    </section>
+
+    <!-- ANALYTICS -->
+    <section class="panel" id="analytics" hidden>
+      <div class="panel-head"><div><h2>Store Analytics</h2><p>Visitors, traffic sources, locations, product interest and completed orders.</p></div><button class="secondary" id="refreshAnalytics" type="button">REFRESH</button></div>
+      <div class="analytics-toolbar"><span id="analyticsPeriodLabel">Last 30 days</span><label>Period<select id="analyticsPeriod"><option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option><option value="365">Last 12 months</option></select></label></div>
+      <div id="analyticsContent"><div class="analytics-empty">Loading analytics…</div></div>
+      <div class="analytics-columns analytics-maintenance-grid">
+        <div class="analytics-box"><h3>Storage & retention monitor</h3><div id="analyticsStorage"><div class="analytics-empty">Loading storage information…</div></div></div>
+        <div class="analytics-box"><h3>Monthly archive</h3><p class="analytics-note">Older detailed events are compacted into monthly totals. Monthly visitor counts are deduplicated by anonymous browser session.</p><div id="analyticsMonthly"><div class="analytics-empty">Loading monthly summaries…</div></div></div>
+      </div>
+      <p class="analytics-note">Location is approximate and based on Cloudflare network data. Analytics starts collecting after this version is deployed; historical visitor data cannot be reconstructed. Order attribution is captured at checkout when the customer’s browser retains its visit source. Detailed event retention is 90 days; monthly summaries and lightweight attribution are retained for long-term reporting.</p>
     </section>
 
     <!-- PRODUCTS -->
@@ -239,16 +256,35 @@
 
         <div class="settings-grid">
 
+          <h3 class="full-width">Marketing & Tracking Integrations</h3>
+          <p class="full-width">Paste your platform IDs here. Save once; the storefront will load each integration automatically. Leave a field empty to disable that platform. IDs are public tracking identifiers, not passwords or secret API keys.</p>
+          <label>Google Analytics 4 Measurement ID
+            <input name="marketing_ga4_id" placeholder="G-XXXXXXXXXX" autocomplete="off">
+          </label>
+          <label>Google Ads Conversion ID
+            <input name="marketing_google_ads_id" placeholder="AW-XXXXXXXXX" autocomplete="off">
+          </label>
+          <label>Google Ads Purchase Conversion Label
+            <input name="marketing_google_ads_label" placeholder="Conversion label" autocomplete="off">
+          </label>
+          <label>Meta (Facebook / Instagram) Pixel ID
+            <input name="marketing_meta_pixel_id" placeholder="Numeric Pixel ID" autocomplete="off">
+          </label>
+          <label>TikTok Pixel ID
+            <input name="marketing_tiktok_pixel_id" placeholder="TikTok Pixel ID" autocomplete="off">
+          </label>
+          <p class="full-width">Tracked events: page view, product view, add to cart, checkout start and purchase. Server-side conversion APIs that require private access tokens can be added separately using Cloudflare environment secrets—never paste secret tokens into these ID fields.</p>
+
           <h3 class="full-width">General Information</h3>
 
           <label>
             Store Name
-            <input name="store_name" value="ZK FITS">
+            <input name="store_name" value="ZK FITSS">
           </label>
 
           <label>
             Announcement Bar
-            <input name="announcement" placeholder="Welcome to ZK FITS">
+            <input name="announcement" placeholder="Welcome to ZK FITSS">
           </label>
 
           <label>
@@ -509,7 +545,7 @@
 
           <h3 class="full-width">Order Email Notifications</h3>
           <label>Admin New-Order Email<input name="admin_email" type="email" placeholder="orders@yourdomain.com"></label>
-          <label>Verified Sender Email<input name="email_from" placeholder="ZK FITS &lt;orders@your-verified-domain.com&gt;"></label>
+          <label>Verified Sender Email<input name="email_from" placeholder="ZK FITSS &lt;orders@your-verified-domain.com&gt;"></label>
           <label>Email Notifications<select name="order_emails_enabled"><option value="1">Enabled</option><option value="0">Disabled</option></select></label>
           <p class="field-help full-width">Resend API key must be added as the Cloudflare secret RESEND_API_KEY. The key is never stored in this admin form or sent to the browser. Sender domain must be verified in Resend.</p>
 

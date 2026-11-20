@@ -1,5 +1,5 @@
 /* =====================================================
-   ZK FITS — PRODUCT DETAIL PAGE
+   ZK FITSS — PRODUCT DETAIL PAGE
    Product details, variants, gallery, cart and reviews
    Editable Return & Exchange Policy
    Mobile navigation support
@@ -181,21 +181,83 @@
   }
 
   function updateDocumentDetails(product) {
-    document.title =
-      `${product.title || product.name || "Product"} | ZK FITS`;
+    const productName = product.title || product.name || "Product";
+    const brandName = "ZK FITSS";
+    const title = `${productName} | ${brandName}`;
+    const rawDescription = product.description || `Shop ${productName} at ${brandName}. Discover elegant Pakistani Eastern wear for women and girls.`;
+    const description = String(rawDescription).replace(/\s+/g, " ").trim().slice(0, 155);
+    const canonicalUrl = `${window.location.origin}${window.location.pathname}?id=${encodeURIComponent(getProductId())}`;
+    const productImages = getProductImages(product);
+    const imageUrl = productImages[0] ? new URL(productImages[0], window.location.origin).href : `${window.location.origin}/og-image.jpg`;
 
-    const description =
-      product.description || "Discover your outfit at ZK FITS.";
+    document.title = title;
 
-    const meta = document.querySelector('meta[name="description"]');
+    const setMeta = (selector, value) => {
+      let element = document.querySelector(selector);
+      if (!element) {
+        element = document.createElement("meta");
+        const propertyMatch = selector.match(/property="([^"]+)"/);
+        const nameMatch = selector.match(/name="([^"]+)"/);
+        if (propertyMatch) element.setAttribute("property", propertyMatch[1]);
+        if (nameMatch) element.setAttribute("name", nameMatch[1]);
+        document.head.appendChild(element);
+      }
+      element.setAttribute("content", value);
+    };
 
-    if (meta) {
-      meta.setAttribute("content", description.slice(0, 155));
+    setMeta('meta[name="description"]', description);
+    setMeta('meta[property="og:title"]', title);
+    setMeta('meta[property="og:description"]', description);
+    setMeta('meta[property="og:url"]', canonicalUrl);
+    setMeta('meta[property="og:image"]', imageUrl);
+    setMeta('meta[property="og:image:alt"]', `${productName} at ZK FITSS`);
+    setMeta('meta[name="twitter:title"]', title);
+    setMeta('meta[name="twitter:description"]', description);
+    setMeta('meta[name="twitter:image"]', imageUrl);
+
+    let canonical = document.querySelector('link[rel="canonical"]');
+    if (!canonical) {
+      canonical = document.createElement("link");
+      canonical.rel = "canonical";
+      document.head.appendChild(canonical);
     }
+    canonical.href = canonicalUrl;
+
+    const price = getProductPrice(product);
+    const stockKnown = product.stock !== undefined && product.stock !== null && product.stock !== "";
+    const structuredProduct = {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      "name": productName,
+      "description": description,
+      "image": productImages.map(url => new URL(url, window.location.origin).href),
+      "brand": { "@type": "Brand", "name": brandName },
+      ...(product.sku ? { "sku": String(product.sku) } : {}),
+      ...(price > 0 ? {
+        "offers": {
+          "@type": "Offer",
+          "url": canonicalUrl,
+          "priceCurrency": "PKR",
+          "price": price,
+          ...(stockKnown ? {
+            "availability": Number(product.stock) > 0
+              ? "https://schema.org/InStock"
+              : "https://schema.org/OutOfStock"
+          } : {})
+        }
+      } : {})
+    };
+    let jsonLd = document.getElementById("productStructuredData");
+    if (!jsonLd) {
+      jsonLd = document.createElement("script");
+      jsonLd.id = "productStructuredData";
+      jsonLd.type = "application/ld+json";
+      document.head.appendChild(jsonLd);
+    }
+    jsonLd.textContent = JSON.stringify(structuredProduct);
 
     if ($("breadcrumbProduct")) {
-      $("breadcrumbProduct").textContent =
-        product.title || product.name || "Product";
+      $("breadcrumbProduct").textContent = productName;
     }
   }
 
@@ -281,7 +343,7 @@
     }
 
     image.src = state.images[state.imageIndex];
-    image.alt = state.product?.name || "ZK FITS product";
+    image.alt = state.product?.name || "ZK FITSS product";
 
     thumbnails.innerHTML = state.images.map((src, index) => `
       <button
@@ -542,7 +604,7 @@
     if (content) {
       content.textContent = String(policy).trim()
         ? String(policy)
-        : "Please contact ZK FITS for return and exchange information.";
+        : "Please contact ZK FITSS for return and exchange information.";
 
       content.style.whiteSpace = "pre-line";
     }
@@ -601,14 +663,15 @@
 
   function applyProductPageSettings() {
     const settings = state.settings || {};
-    const name = settings.store_name || "ZK FITS";
+    const savedStoreName = settings.store_name || "ZK FITSS";
+    const name = /^ZK FITS$/i.test(savedStoreName.trim()) ? "ZK FITSS" : savedStoreName;
     const logo = settings.logo || "";
     document.querySelectorAll(".footer-brand").forEach(el => el.textContent = name);
     const storeName = $("storeName");
     const storeLogo = $("storeLogo");
     if (storeName) { storeName.textContent = name; storeName.hidden = !!logo; }
     if (storeLogo && logo) { storeLogo.src = logo; storeLogo.hidden = false; }
-    if ($("announcementText")) $("announcementText").textContent = settings.announcement || "Welcome to ZK FITS";
+    if ($("announcementText")) $("announcementText").textContent = settings.announcement || "Welcome to ZK FITSS";
     if ($("footerText")) $("footerText").textContent = settings.footer_text || "Discover elegant Pakistani fashion for women and girls.";
     if ($("footerPhone")) $("footerPhone").textContent = settings.phone || "Customer Support";
     if ($("footerEmail")) $("footerEmail").textContent = settings.email || "";
@@ -682,6 +745,7 @@
     state.quantity = 1;
 
     updateDocumentDetails(product);
+    window.ZKAnalytics?.track("product_view", { product_id: product.id, product_name: product.title || product.name, value: getProductPrice(product) });
 
     if ($("productCategory")) {
       $("productCategory").textContent = product.category || "";
@@ -770,7 +834,7 @@
       renderProduct(product);
 
     } catch (error) {
-      console.error("ZK FITS product loading error:", error);
+      console.error("ZK FITSS product loading error:", error);
       showProductError();
     }
   }
@@ -873,6 +937,7 @@
     }
 
     saveCart(cart);
+    window.ZKAnalytics?.track("add_to_cart", { product_id: product.id, product_name: product.title || product.name, value: getProductPrice(product) * state.quantity });
 
     window.dispatchEvent(new Event("zkfits:cart-updated"));
 
@@ -1059,7 +1124,7 @@
       );
 
     } catch (error) {
-      console.error("ZK FITS reviews loading error:", error);
+      console.error("ZK FITSS reviews loading error:", error);
 
       if (list) {
         list.innerHTML = `
@@ -1148,7 +1213,7 @@
         showToast("Thank you for your review!");
 
       } catch (error) {
-        console.error("ZK FITS review submission error:", error);
+        console.error("ZK FITSS review submission error:", error);
 
         setMessage(
           message,
@@ -1292,9 +1357,9 @@
       if (!product) return;
 
       const shareData = {
-        title: product.title || product.name || "ZK FITS",
+        title: product.title || product.name || "ZK FITSS",
         text: product.description ||
-          "Discover this product at ZK FITS.",
+          "Discover this product at ZK FITSS.",
         url: location.href
       };
 
@@ -1384,7 +1449,7 @@
       const fd = new FormData(form);
       const data = Object.fromEntries(fd.entries());
       const items = readCart().map(item => ({ id:item.id, quantity:Number(item.quantity || item.qty || 1), size:item.size || "", color:item.color || "" }));
-      const response = await fetch(`${API}/orders`, { method:"POST", headers:{"Content-Type":"application/json"}, credentials:"same-origin", body:JSON.stringify({...data, items}) });
+      const response = await fetch(`${API}/orders`, { method:"POST", headers:{"Content-Type":"application/json"}, credentials:"same-origin", body:JSON.stringify({...data, items, attribution: window.ZKAnalytics?.getAttribution?.() || {}}) });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error || "Unable to place order.");
       localStorage.removeItem(CART_KEY);

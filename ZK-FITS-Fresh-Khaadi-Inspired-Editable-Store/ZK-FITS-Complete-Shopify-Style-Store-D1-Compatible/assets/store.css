@@ -1723,7 +1723,7 @@ button:disabled {
 
 .payment-instructions { padding:12px 14px; margin:10px 0; background:#f5f0ea; border-radius:8px; color:#51443a; font-size:13px; line-height:1.7; white-space:pre-line; }
 
-/* ZK FITS final visual refinements */
+/* ZK FITSS final visual refinements */
 .product-card-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:14px; }
 .product-card-actions .quick-add-button { display:flex; align-items:center; justify-content:center; min-height:42px; padding:10px 6px; text-align:center; text-decoration:none; font-size:9px; letter-spacing:.8px; }
 .card-buy-button { background:var(--store-accent); color:#fff; border-color:var(--store-accent); }

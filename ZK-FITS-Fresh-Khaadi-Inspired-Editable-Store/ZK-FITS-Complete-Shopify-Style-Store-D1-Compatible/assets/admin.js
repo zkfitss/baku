@@ -179,15 +179,19 @@
       products: "Products",
       orders: "Customer Orders",
       settings: "Store Customization",
-      reviews: "Product Reviews"
+      reviews: "Product Reviews",
+      analytics: "Store Analytics"
     };
 
     if ($("#pageTitle")) {
-      $("#pageTitle").textContent = titles[tab] || "ZK FITS";
+      $("#pageTitle").textContent = titles[tab] || "ZK FITSS";
     }
 
     if (tab === "reviews") {
       loadReviews();
+    }
+    if (tab === "analytics") {
+      loadAnalytics();
     }
   }
 
@@ -236,7 +240,7 @@
       popup.style.cssText = "position:fixed;right:18px;top:18px;z-index:99999;max-width:340px;background:#292521;color:#fff;padding:18px 20px;border-radius:12px;box-shadow:0 12px 40px #0003;font:14px/1.5 Arial,sans-serif";
       document.body.appendChild(popup);
     }
-    popup.innerHTML = `<strong>New ZK FITS order!</strong><p style="margin:8px 0">Order #${escapeHTML(order.id)} · ${escapeHTML(order.customer_name || "Customer")} · ${money(order.total)}</p><button type="button" id="viewNewOrder" style="background:#fff;color:#292521;border:0;border-radius:6px;padding:8px 12px;cursor:pointer">View orders</button> <button type="button" id="dismissNewOrder" style="background:transparent;color:#fff;border:1px solid #aaa;border-radius:6px;padding:8px 12px;cursor:pointer">Dismiss</button>`;
+    popup.innerHTML = `<strong>New ZK FITSS order!</strong><p style="margin:8px 0">Order #${escapeHTML(order.id)} · ${escapeHTML(order.customer_name || "Customer")} · ${money(order.total)}</p><button type="button" id="viewNewOrder" style="background:#fff;color:#292521;border:0;border-radius:6px;padding:8px 12px;cursor:pointer">View orders</button> <button type="button" id="dismissNewOrder" style="background:transparent;color:#fff;border:1px solid #aaa;border-radius:6px;padding:8px 12px;cursor:pointer">Dismiss</button>`;
     document.getElementById("viewNewOrder")?.addEventListener("click", () => { openTab("orders"); popup.remove(); });
     document.getElementById("dismissNewOrder")?.addEventListener("click", () => popup.remove());
   }
@@ -271,6 +275,108 @@
   }
 
   // ------------------------------------
+  // STORE ANALYTICS
+  // ------------------------------------
+  function analyticsTable(rows, columns, emptyText = "No data collected yet.") {
+    if (!rows || !rows.length) return `<div class="analytics-empty">${escapeHTML(emptyText)}</div>`;
+    return `<div style="overflow-x:auto"><table class="analytics-table"><thead><tr>${columns.map(c => `<th>${escapeHTML(c.label)}</th>`).join("")}</tr></thead><tbody>${rows.map(row => `<tr>${columns.map(c => `<td>${escapeHTML(c.render ? c.render(row) : row[c.key] ?? "—")}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+  }
+
+  function analyticsBars(rows, labelKey, valueKey) {
+    if (!rows || !rows.length) return `<div class="analytics-empty">No data collected yet.</div>`;
+    const max = Math.max(1, ...rows.map(row => Number(row[valueKey] || 0)));
+    return rows.map(row => {
+      const value = Number(row[valueKey] || 0);
+      const label = row[labelKey] || "Unknown";
+      return `<div class="analytics-bar-row"><span title="${escapeHTML(label)}">${escapeHTML(label)}</span><div class="analytics-bar"><i style="width:${Math.max(2, value / max * 100)}%"></i></div><strong>${value.toLocaleString("en-PK")}</strong></div>`;
+    }).join("");
+  }
+
+  async function loadAnalytics() {
+    const target = $("#analyticsContent");
+    if (!target) return;
+    const days = Number($("#analyticsPeriod")?.value || 30);
+    target.innerHTML = `<div class="analytics-empty">Loading analytics…</div>`;
+    try {
+      const data = await api(`/analytics?days=${days}`);
+      const summary = data.summary || {};
+      const funnel = Object.fromEntries((data.funnel || []).map(row => [row.event_name, Number(row.sessions || 0)]));
+      const moneyValue = value => money(Number(value || 0));
+      target.innerHTML = `
+        <div class="analytics-grid">
+          <article class="analytics-card"><small>Unique visitors</small><strong>${Number(summary.visitors || 0).toLocaleString("en-PK")}</strong><span>Distinct tracked browser sessions</span></article>
+          <article class="analytics-card"><small>Page views</small><strong>${Number(summary.page_views || 0).toLocaleString("en-PK")}</strong><span>Storefront page visits</span></article>
+          <article class="analytics-card"><small>Orders placed</small><strong>${Number(summary.orders || 0).toLocaleString("en-PK")}</strong><span>Successfully submitted checkouts</span></article>
+          <article class="analytics-card"><small>Net revenue</small><strong>${moneyValue(summary.revenue)}</strong><span>Excludes cancelled orders</span></article>
+          <article class="analytics-card"><small>Add-to-cart sessions</small><strong>${Number(summary.carts || 0).toLocaleString("en-PK")}</strong><span>Visitors who added products</span></article>
+          <article class="analytics-card"><small>Checkout sessions</small><strong>${Number(summary.checkouts || 0).toLocaleString("en-PK")}</strong><span>Visitors who started checkout</span></article>
+          <article class="analytics-card"><small>Cancelled orders</small><strong>${Number(summary.cancelled || 0).toLocaleString("en-PK")}</strong><span>Excluded from net revenue</span></article>
+          <article class="analytics-card"><small>Cart → order rate</small><strong>${summary.carts ? (Number(summary.orders || 0) / Number(summary.carts) * 100).toFixed(1) + "%" : "0%"}</strong><span>Orders divided by add-to-cart sessions</span></article>
+          <article class="analytics-card"><small>Checkout → order rate</small><strong>${summary.checkouts ? (Number(summary.orders || 0) / Number(summary.checkouts) * 100).toFixed(1) + "%" : "0%"}</strong><span>Orders divided by checkout sessions</span></article>
+        </div>
+        <div class="analytics-columns">
+          <div class="analytics-box"><h3>Traffic sources & sales</h3>${analyticsTable(data.sources, [
+            {label:"Source", key:"source"},{label:"Medium",key:"medium"},{label:"Ordering sessions",key:"visitors"},{label:"Orders",key:"orders"},{label:"Net sales",render:r=>moneyValue(r.revenue)}
+          ])}</div>
+          <div class="analytics-box"><h3>Visitors by device</h3>${analyticsBars(data.devices, "device", "visitors")}</div>
+        </div>
+        <div class="analytics-columns">
+          <div class="analytics-box"><h3>Visitor locations (approximate)</h3>${analyticsTable(data.locations, [
+            {label:"City",key:"city"},{label:"Country",key:"country"},{label:"Visitors",key:"visitors"},{label:"Orders",key:"orders"}
+          ])}</div>
+          <div class="analytics-box"><h3>Top pages</h3>${analyticsTable(data.pages, [
+            {label:"Page",key:"page_path"},{label:"Views",key:"views"},{label:"Visitors",key:"visitors"}
+          ])}</div>
+        </div>
+        <div class="analytics-columns">
+          <div class="analytics-box"><h3>Top products</h3>${analyticsTable(data.products, [
+            {label:"Product",key:"product_name"},{label:"Views",key:"views"},{label:"Add to carts",key:"add_to_carts"},{label:"Items ordered",key:"units_sold"},{label:"Net sales",render:r=>moneyValue(r.sales)}
+          ])}</div>
+          <div class="analytics-box"><h3>Customer journey</h3>${analyticsBars([
+            {label:"Visitors",count:Number(summary.visitors||0)},{label:"Added to cart",count:funnel.add_to_cart||0},{label:"Checkout started",count:funnel.checkout_start||0},{label:"Orders completed",count:Number(summary.orders||0)}
+          ], "label", "count")}</div>
+        </div>
+        <div class="analytics-box"><h3>Daily activity</h3>${analyticsTable((data.daily||[]).slice(-14).reverse(), [
+          {label:"Date",key:"day"},{label:"Visitors",key:"visitors"},{label:"Views",key:"views"},{label:"Orders",key:"orders"},{label:"Net revenue",render:r=>moneyValue(r.revenue)}
+        ])}</div>
+      `;
+      const storageTarget = $("#analyticsStorage");
+      if (storageTarget) {
+        const storage = data.storage || {};
+        const sizeLabel = Number(storage.estimated_mb || 0) < 1
+          ? `${Math.max(1, Math.round(Number(storage.estimated_bytes || 0) / 1024))} KB`
+          : `${Number(storage.estimated_mb || 0).toFixed(2)} MB`;
+        storageTarget.innerHTML = `<div class="analytics-grid analytics-storage-grid">
+          <article class="analytics-card"><small>Estimated analytics footprint</small><strong>${sizeLabel}</strong><span>Payload estimate, not full D1 database size</span></article>
+          <article class="analytics-card"><small>Detailed events retained</small><strong>${Number(storage.event_count || 0).toLocaleString("en-PK")}</strong><span>Automatic 90-day detail window</span></article>
+          <article class="analytics-card"><small>Archived monthly sessions</small><strong>${Number(storage.archived_sessions || 0).toLocaleString("en-PK")}</strong><span>Anonymous monthly visitor keys</span></article>
+          <article class="analytics-card"><small>Archived months</small><strong>${Number(storage.archived_months || 0)}</strong><span>Monthly summaries preserved</span></article>
+        </div><p class="analytics-note">Last cleanup: ${storage.last_retention_run ? escapeHTML(new Date(storage.last_retention_run).toLocaleString()) : "Not run yet"}. ${escapeHTML(storage.note || "")}</p>`;
+      }
+      const monthlyTarget = $("#analyticsMonthly");
+      if (monthlyTarget) {
+        const rows = data.monthly || [];
+        monthlyTarget.innerHTML = analyticsTable(rows, [
+          {label:"Month",key:"month"},{label:"Visitors",key:"visitors"},{label:"Page views",key:"page_views"},
+          {label:"Orders",key:"orders"},{label:"Net revenue",render:r=>moneyValue(r.revenue)}
+        ], "No archived months yet. Older data will appear here after it passes the 90-day detail window.") +
+          `<h3 style="margin-top:18px">Archived order sources</h3>` + analyticsTable(data.monthly_sources || [], [
+            {label:"Month",key:"month"},{label:"Source",key:"source"},{label:"Medium",key:"medium"},
+            {label:"Orders",key:"orders"},{label:"Net revenue",render:r=>moneyValue(r.revenue)}
+          ], "No archived source-attributed orders yet.");
+      }
+      if (data.retention_warning) notify(data.retention_warning, true);
+      const periodLabel = $("#analyticsPeriodLabel");
+      if (periodLabel) periodLabel.textContent = `Last ${days} days`;
+    } catch (error) {
+      target.innerHTML = `<div class="analytics-empty">${escapeHTML(error.message)}<br>Make sure the analytics database migration has been applied.</div>`;
+    }
+  }
+
+  $("#analyticsPeriod")?.addEventListener("change", loadAnalytics);
+  $("#refreshAnalytics")?.addEventListener("click", loadAnalytics);
+
+  // ------------------------------------
   // PRODUCT LIST
   // ------------------------------------
 
@@ -282,7 +388,7 @@
       container.innerHTML = `
         <div class="empty-state">
           <h3>No products added yet</h3>
-          <p>Add your first ZK FITS product.</p>
+          <p>Add your first ZK FITSS product.</p>
         </div>
       `;
       return;

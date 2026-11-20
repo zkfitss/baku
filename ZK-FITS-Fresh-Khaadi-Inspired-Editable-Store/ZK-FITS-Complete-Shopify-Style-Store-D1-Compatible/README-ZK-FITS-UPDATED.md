@@ -1,6 +1,6 @@
-# ZK FITS updated website files
+# ZK FITSS updated website files
 
-This package updates the existing ZK FITS Cloudflare Pages website.
+This package updates the existing ZK FITSS Cloudflare Pages website.
 
 ## Included changes
 - Product page uses one vertical layout on desktop and mobile: gallery first, purchase options and quantity below, then both Add to Cart and Buy Now buttons, followed by description and details.
@@ -16,14 +16,14 @@ This package updates the existing ZK FITS Cloudflare Pages website.
 - Customer's initial email says the order was received and is awaiting confirmation.
 
 ## Important deployment safety
-- This package intentionally does NOT include `schema.sql`, the `migrations/` folder, or `wrangler.toml`.
-- Do not delete or replace your existing D1 database, database bindings, migrations, or secrets.
-- Upload/replace the included website files in the existing repository. Keep your current `wrangler.toml`, `schema.sql`, and `migrations/` unchanged.
+- This package includes `wrangler.toml`, `schema.sql`, and additive migrations for reference and deployment.
+- Do not delete or replace your existing D1 database, database bindings, or secrets.
+- Preserve the live database and apply only the required new migrations in order. Do not run the fresh `schema.sql` against an existing store database.
 
 ## Email configuration
 Set these Cloudflare Pages environment variables/secrets for the existing project:
 - `RESEND_API_KEY`: API key from Resend.
-- `EMAIL_FROM`: sender using a domain verified in Resend, e.g. `ZK FITS <orders@your-verified-domain.com>`.
+- `EMAIL_FROM`: sender using a domain verified in Resend, e.g. `ZK FITSS <orders@your-verified-domain.com>`.
 - `ADMIN_EMAIL`: address that receives new-order notifications.
 - Keep existing `ADMIN_PASSWORD` and `SESSION_SECRET` values unchanged.
 
@@ -40,3 +40,11 @@ The backend reports whether an email was sent. A successful deployment alone doe
 8. Change the test order status to Confirmed; verify customer confirmation email.
 
 This package has been syntax-checked. Live Cloudflare/D1/Resend behaviour must still be tested after deployment.
+
+
+## Analytics retention and storage monitor
+- Added 90-day detailed-event retention with monthly rollups for long-term visitor and order reporting.
+- Added Admin storage monitor for estimated analytics payload, event rows, archived monthly sessions and last cleanup time.
+- Monthly archives preserve summary metrics and order-source attribution; order revenue reflects current order status.
+- Apply migration `0006_analytics_retention.sql` to the existing D1 database after deploying: `npx wrangler d1 migrations apply zkfitss --remote`. Do not recreate the database.
+- Cleanup is run at most once per 24 hours when an authenticated administrator opens Analytics. It is not a background cron job.

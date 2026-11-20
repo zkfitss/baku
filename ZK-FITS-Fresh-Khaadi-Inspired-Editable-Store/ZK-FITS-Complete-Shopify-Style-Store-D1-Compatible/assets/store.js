@@ -116,7 +116,7 @@
   }
 
   function productName(product) {
-    return product.title || product.name || "ZK FITS Collection";
+    return product.title || product.name || "ZK FITSS Collection";
   }
 
   function productPrice(product) {
@@ -230,7 +230,7 @@
   }
 
   function updateSearchPreviewImage() {
-    const imageUrl = setting("seo_image");
+    const imageUrl = setting("seo_image", "/og-image.jpg");
     if (!imageUrl) return;
 
     const tags = [
@@ -249,7 +249,7 @@
   }
 
   function updateWebsiteFavicon() {
-    const imageUrl = setting("favicon_url");
+    const imageUrl = setting("favicon_url", "/icon-192.png");
     if (!imageUrl) return;
     const links = [
       ["icon", "image/png"],
@@ -270,7 +270,8 @@
   function applySettings() {
     updateSearchPreviewImage();
     updateWebsiteFavicon();
-    const storeName = setting("store_name", "ZK FITS");
+    const storeNameSetting = setting("store_name", "ZK FITSS");
+    const storeName = /^ZK FITS$/i.test(storeNameSetting.trim()) ? "ZK FITSS" : storeNameSetting;
 
     setText("#storeName", storeName);
 
@@ -294,7 +295,7 @@
 
     setText(
       "#announcementText",
-      setting("announcement", "Welcome to ZK FITS — Discover your style")
+      setting("announcement", "Welcome to ZK FITSS — Discover your style")
     );
 
     const heroKicker = $("#heroKicker");
@@ -682,7 +683,7 @@
           <div class="product-image-wrap">
             ${image
               ? `<img src="${escapeHTML(image)}" alt="${name}" loading="lazy">`
-              : `<div class="product-image-placeholder">ZK FITS</div>`}
+              : `<div class="product-image-placeholder">ZK FITSS</div>`}
             ${hasSale ? `<span class="sale-badge">SALE</span>` : ""}
             ${stock <= 0 ? `<span class="sold-badge">SOLD OUT</span>` : ""}
           </div>
@@ -777,11 +778,11 @@
       <div class="product-modal-image">
         ${image
           ? `<img src="${escapeHTML(image)}" alt="${escapeHTML(productName(product))}">`
-          : `<div class="product-image-placeholder">ZK FITS</div>`}
+          : `<div class="product-image-placeholder">ZK FITSS</div>`}
       </div>
 
       <div class="product-modal-info">
-        <span class="section-kicker">${escapeHTML(product.category || "ZK FITS COLLECTION")}</span>
+        <span class="section-kicker">${escapeHTML(product.category || "ZK FITSS COLLECTION")}</span>
         <h2 id="modalProductTitle">${escapeHTML(productName(product))}</h2>
 
         <div class="product-modal-price">
@@ -790,7 +791,7 @@
         </div>
 
         <p class="product-description">
-          ${escapeHTML(product.description || "Discover this beautiful ZK FITS design.")}
+          ${escapeHTML(product.description || "Discover this beautiful ZK FITSS design.")}
         </p>
 
         ${hasVariants && sizes.length ? `
@@ -897,6 +898,7 @@
     }
 
     saveCart();
+    window.ZKAnalytics?.track("add_to_cart", { product_id: product.id, product_name: productName(product), value: productPrice(product) * quantity });
     hideModal($("#productModal"));
     notify("Added to your shopping bag.");
     openCart();
@@ -940,7 +942,7 @@
         <div class="cart-item-image">
           ${item.image
             ? `<img src="${escapeHTML(item.image)}" alt="${escapeHTML(item.title)}">`
-            : `<span>ZK FITS</span>`}
+            : `<span>ZK FITSS</span>`}
         </div>
 
         <div class="cart-item-info">
@@ -1115,7 +1117,8 @@
           phone: customer.phone,
           address: customer.address,
           payment_method: customer.payment_method,
-          items
+          items,
+          attribution: window.ZKAnalytics?.getAttribution?.() || {}
         })
       });
 
@@ -1128,6 +1131,8 @@
       const orderId =
         result.order?.id || result.order_id || result.id || "";
 
+      window.dispatchEvent(new CustomEvent("zk:analytics-event", { detail: { event_name: "purchase", value: Number(result.order?.total || result.total || items.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1), 0)), order_id: orderId } }));
+
       setText(
         "#orderReference",
         orderId ? "Order Reference: " + orderId : ""
@@ -1137,7 +1142,7 @@
         "#successMessage",
         result.email_sent === false
           ? "Your order has been received. We will contact you regarding your order."
-          : "Thank you for shopping with ZK FITS. Your order confirmation will be sent to your email."
+          : "Thank you for shopping with ZK FITSS. Your order confirmation will be sent to your email."
       );
 
       showModal($("#successModal"));
@@ -1325,7 +1330,7 @@
       updateCart();
 
     } catch (error) {
-      console.error("ZK FITS store loading error:", error);
+      console.error("ZK FITSS store loading error:", error);
 
       setHTML(
         "#featuredProducts",
