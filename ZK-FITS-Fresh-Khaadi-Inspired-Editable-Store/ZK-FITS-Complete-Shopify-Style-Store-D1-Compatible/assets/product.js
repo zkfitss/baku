@@ -18,6 +18,7 @@
     settings: {},
     images: [],
     imageIndex: 0,
+    mainImageOverride: "",
     sizes: [],
     colors: [],
     variants: [],
@@ -347,7 +348,7 @@
       return;
     }
 
-    image.src = state.images[state.imageIndex];
+    image.src = state.mainImageOverride || state.images[state.imageIndex];
     image.alt = state.product?.name || "ZK FITSS product";
 
     thumbnails.innerHTML = state.images.map((src, index) => `
@@ -366,6 +367,7 @@
     thumbnails.querySelectorAll("[data-image-index]").forEach(button => {
       button.addEventListener("click", () => {
         state.imageIndex = Number(button.dataset.imageIndex);
+        state.mainImageOverride = "";
         renderImages();
       });
     });
@@ -385,6 +387,7 @@
     state.imageIndex =
       (state.imageIndex + direction + state.images.length) %
       state.images.length;
+    state.mainImageOverride = "";
 
     renderImages();
   }
@@ -528,10 +531,10 @@
   function updateSelectedVariantImages() {
     if (!state.product) return;
 
-    // The detail-page gallery is the main product's own photo set.
-    // Colour-specific photos are placed first only while that colour is
-    // selected; the main product photos always remain in the thumbnail rail.
-    const mainProductGallery = getBaseProductImages(state.product);
+    // Keep only the main product's original images in the thumbnail gallery.
+    // A selected colour changes the large image only; variant photos are not
+    // appended to the gallery, so duplicate/extra colour thumbnails never show.
+    state.images = getBaseProductImages(state.product);
     const selectedColor = String(state.selectedColor || "").trim().toLowerCase();
     let selectedColourImages = [];
 
@@ -547,8 +550,8 @@
       if (chosenVariant) selectedColourImages = chosenVariant.images;
     }
 
-    state.images = [...new Set([...selectedColourImages, ...mainProductGallery])];
     state.imageIndex = 0;
+    state.mainImageOverride = selectedColourImages[0] || "";
     renderImages();
   }
 
@@ -784,6 +787,7 @@
     state.product = product;
     state.images = getBaseProductImages(product);
     state.imageIndex = 0;
+    state.mainImageOverride = "";
     state.variants = normalizeVariants(product.variants);
     state.sizes = normalizeList(product.sizes, "sizes");
     state.colors = normalizeList(product.colors, "colors");
