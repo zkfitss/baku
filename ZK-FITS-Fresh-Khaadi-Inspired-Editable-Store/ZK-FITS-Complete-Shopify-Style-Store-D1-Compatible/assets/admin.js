@@ -519,9 +519,31 @@
     const preview = row.querySelector(".variant-image-preview");
     const drawPreview = () => {
       const images = JSON.parse(row.dataset.images || "[]");
-      preview.innerHTML = images.map((url, index) => `<span class="admin-image-thumb"><img src="${escapeHTML(url)}" alt="Variant image"><button type="button" data-variant-image-remove="${index}" aria-label="Remove image">×</button></span>`).join("");
+      preview.innerHTML = images.map((url, index) => `<span class="admin-image-thumb sortable-admin-image" draggable="true" data-variant-image-index="${index}"><img src="${escapeHTML(url)}" alt="Variant image"><button type="button" data-variant-image-remove="${index}" aria-label="Remove image">×</button></span>`).join("");
     };
     drawPreview();
+    let draggedVariantImage = null;
+    preview.addEventListener("dragstart", event => {
+      const item = event.target.closest("[data-variant-image-index]");
+      if (!item) return;
+      draggedVariantImage = Number(item.dataset.variantImageIndex);
+      event.dataTransfer.effectAllowed = "move";
+    });
+    preview.addEventListener("dragover", event => {
+      if (event.target.closest("[data-variant-image-index]")) event.preventDefault();
+    });
+    preview.addEventListener("drop", event => {
+      const item = event.target.closest("[data-variant-image-index]");
+      if (!item || draggedVariantImage === null) return;
+      event.preventDefault();
+      const images = JSON.parse(row.dataset.images || "[]");
+      const target = Number(item.dataset.variantImageIndex);
+      const [moved] = images.splice(draggedVariantImage, 1);
+      images.splice(target, 0, moved);
+      row.dataset.images = JSON.stringify(images);
+      draggedVariantImage = null;
+      drawPreview();
+    });
 
     row.querySelector(".variant-images").addEventListener("change", async event => {
       const files = [...(event.target.files || [])];
@@ -678,7 +700,7 @@
     const images = JSON.parse(row.dataset.images || "[]");
     images.splice(Number(button.dataset.variantImageRemove), 1);
     row.dataset.images = JSON.stringify(images);
-    row.querySelector(".variant-image-preview").innerHTML = images.map((url, index) => `<span class="admin-image-thumb"><img src="${escapeHTML(url)}" alt="Variant image"><button type="button" data-variant-image-remove="${index}" aria-label="Remove image">×</button></span>`).join("");
+    row.querySelector(".variant-image-preview").innerHTML = images.map((url, index) => `<span class="admin-image-thumb sortable-admin-image" draggable="true" data-variant-image-index="${index}"><img src="${escapeHTML(url)}" alt="Variant image"><button type="button" data-variant-image-remove="${index}" aria-label="Remove image">×</button></span>`).join("");
   });
 
   // ------------------------------------
@@ -930,6 +952,75 @@
   // STORE SETTINGS
   // ------------------------------------
 
+  // Drag files onto any image upload field (products, variants, banners, logo, favicon, SEO image).
+  // The native change handlers remain the single upload path, so all existing validation/API logic is reused.
+  function enableImageFileDropZones() {
+    document.querySelectorAll('input[type="file"][accept*="image"]').forEach(input => {
+      const zone = input.closest("label") || input;
+      zone.classList.add("image-drop-zone");
+      ["dragenter", "dragover"].forEach(type => zone.addEventListener(type, event => {
+        if (![...(event.dataTransfer?.items || [])].some(item => item.kind === "file")) return;
+        event.preventDefault();
+        zone.classList.add("is-drag-over");
+        if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+      }));
+      ["dragleave", "dragend"].forEach(type => zone.addEventListener(type, event => {
+        if (type === "dragleave" && zone.contains(event.relatedTarget)) return;
+        zone.classList.remove("is-drag-over");
+      }));
+      zone.addEventListener("drop", event => {
+        const files = [...(event.dataTransfer?.files || [])].filter(file => file.type.startsWith("image/"));
+        if (!files.length) return;
+        event.preventDefault();
+        zone.classList.remove("is-drag-over");
+        const transfer = new DataTransfer();
+        (input.multiple ? files : files.slice(0, 1)).forEach(file => transfer.items.add(file));
+        input.files = transfer.files;
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+    });
+  }
+  enableImageFileDropZones();
+
+  function renderSortableSlides(preview, urls, kind) {
+    const removeAttr = kind === "mobile" ? "data-mobile-slide-remove" : "data-hero-slide-remove";
+    const indexAttr = kind === "mobile" ? "data-mobile-slide-index" : "data-hero-slide-index";
+    preview.innerHTML = urls.map((url, index) => `<span class="admin-image-thumb sortable-admin-image" draggable="true" ${indexAttr}="${index}"><img src="${escapeHTML(url)}" alt="${kind === "mobile" ? "Mobile hero" : "Hero"} slide"><button type="button" ${removeAttr}="${index}" aria-label="Remove slide">×</button></span>`).join("");
+  }
+
+  function bindSortableSlidePreview(preview, kind) {
+    if (!preview) return;
+    let draggedIndex = null;
+    const getKey = () => kind === "mobile" ? "hero_mobile_slides" : "hero_slides";
+    const getIndex = item => Number(kind === "mobile" ? item.dataset.mobileSlideIndex : item.dataset.heroSlideIndex);
+    preview.addEventListener("dragstart", event => {
+      const item = event.target.closest("[data-hero-slide-index], [data-mobile-slide-index]");
+      if (!item) return;
+      draggedIndex = getIndex(item);
+      event.dataTransfer.effectAllowed = "move";
+    });
+    preview.addEventListener("dragover", event => {
+      if (event.target.closest("[data-hero-slide-index], [data-mobile-slide-index]")) event.preventDefault();
+    });
+    preview.addEventListener("drop", event => {
+      const item = event.target.closest("[data-hero-slide-index], [data-mobile-slide-index]");
+      if (!item || draggedIndex === null) return;
+      event.preventDefault();
+      const key = getKey();
+      let urls = [];
+      try { urls = JSON.parse(uploadedSettingsImages[key] || settings[key] || "[]"); } catch {}
+      const target = getIndex(item);
+      const [moved] = urls.splice(draggedIndex, 1);
+      urls.splice(target, 0, moved);
+      uploadedSettingsImages[key] = JSON.stringify(urls);
+      draggedIndex = null;
+      renderSortableSlides(preview, urls, kind);
+    });
+  }
+
+  bindSortableSlidePreview($("#heroSlidesPreview"), "desktop");
+  bindSortableSlidePreview($("#heroMobileSlidesPreview"), "mobile");
+
   const settingFileFields = {
     logoUpload: {
       key: "logo",
@@ -982,13 +1073,13 @@
     if (mobileSlidesPreview) {
       let mobileSlides = [];
       try { mobileSlides = JSON.parse(settings.hero_mobile_slides || "[]"); } catch {}
-      mobileSlidesPreview.innerHTML = mobileSlides.map((url, index) => `<span class="admin-image-thumb"><img src="${escapeHTML(url)}" alt="Mobile hero slide"><button type="button" data-mobile-slide-remove="${index}" aria-label="Remove slide">×</button></span>`).join("");
+      renderSortableSlides(mobileSlidesPreview, mobileSlides, "mobile");
     }
     const slidesPreview = $("#heroSlidesPreview");
     if (slidesPreview) {
       let slides = [];
       try { slides = JSON.parse(settings.hero_slides || "[]"); } catch {}
-      slidesPreview.innerHTML = slides.map((url, index) => `<span class="admin-image-thumb"><img src="${escapeHTML(url)}" alt="Hero slide"><button type="button" data-hero-slide-remove="${index}" aria-label="Remove slide">×</button></span>`).join("");
+      renderSortableSlides(slidesPreview, slides, "desktop");
     }
 
     Object.entries(settingFileFields).forEach(([, config]) => {
@@ -1036,9 +1127,9 @@
     try {
       const urls = [];
       for (const file of files) urls.push(await uploadImage(file, "hero-slides"));
-      const existing = (() => { try { return JSON.parse(settings.hero_slides || "[]"); } catch { return []; } })();
+      const existing = (() => { try { return JSON.parse(uploadedSettingsImages.hero_slides || settings.hero_slides || "[]"); } catch { return []; } })();
       uploadedSettingsImages.hero_slides = JSON.stringify([...existing, ...urls].slice(0, 10));
-      preview.innerHTML = [...existing, ...urls].map((url, index) => `<span class="admin-image-thumb"><img src="${escapeHTML(url)}" alt="Hero slide"><button type="button" data-hero-slide-remove="${index}" aria-label="Remove slide">×</button></span>`).join("");
+      renderSortableSlides(preview, [...existing, ...urls], "desktop");
       notify("Hero slider images uploaded.");
     } catch (error) {
       preview.textContent = "";
@@ -1057,9 +1148,9 @@
       const urls = [];
       for (const file of files) urls.push(await uploadImage(file, "hero-mobile-slides"));
       let existing = [];
-      try { existing = JSON.parse(settings.hero_mobile_slides || "[]"); } catch {}
+      try { existing = JSON.parse(uploadedSettingsImages.hero_mobile_slides || settings.hero_mobile_slides || "[]"); } catch {}
       uploadedSettingsImages.hero_mobile_slides = JSON.stringify([...existing, ...urls].slice(0, 10));
-      preview.innerHTML = [...existing, ...urls].map((url, index) => `<span class="admin-image-thumb"><img src="${escapeHTML(url)}" alt="Mobile hero slide"><button type="button" data-mobile-slide-remove="${index}" aria-label="Remove slide">×</button></span>`).join("");
+      renderSortableSlides(preview, [...existing, ...urls], "mobile");
       notify("Mobile hero slider images uploaded.");
     } catch (error) { preview.textContent = ""; notify(error.message, true); }
     finally { event.target.value = ""; }
@@ -1080,7 +1171,7 @@
       slides.splice(Number(removeMobileSlide.dataset.mobileSlideRemove), 1);
       uploadedSettingsImages.hero_mobile_slides = JSON.stringify(slides);
       const preview = $("#heroMobileSlidesPreview");
-      if (preview) preview.innerHTML = slides.map((url, index) => `<span class="admin-image-thumb"><img src="${escapeHTML(url)}" alt="Mobile hero slide"><button type="button" data-mobile-slide-remove="${index}" aria-label="Remove slide">×</button></span>`).join("");
+      if (preview) renderSortableSlides(preview, slides, "mobile");
     }
     const removeSlide = event.target.closest("[data-hero-slide-remove]");
     if (removeSlide) {
@@ -1089,7 +1180,7 @@
       slides.splice(Number(removeSlide.dataset.heroSlideRemove), 1);
       uploadedSettingsImages.hero_slides = JSON.stringify(slides);
       const preview = $("#heroSlidesPreview");
-      if (preview) preview.innerHTML = slides.map((url, index) => `<span class="admin-image-thumb"><img src="${escapeHTML(url)}" alt="Hero slide"><button type="button" data-hero-slide-remove="${index}" aria-label="Remove slide">×</button></span>`).join("");
+      if (preview) renderSortableSlides(preview, slides, "desktop");
     }
   });
 

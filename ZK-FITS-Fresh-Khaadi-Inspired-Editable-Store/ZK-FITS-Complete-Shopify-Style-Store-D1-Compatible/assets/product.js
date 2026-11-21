@@ -69,15 +69,18 @@
 
   function getProductImages(product) {
     const images = [];
-
     const extraImages = parseJSON(product.images, []);
     if (Array.isArray(extraImages)) images.push(...extraImages);
+    if (product.image) images.unshift(product.image);
 
-    if (product.image) {
-      images.unshift(product.image);
-    }
+    // Include every variant photograph in the full gallery. Selecting a
+    // colour may reorder this list, but must never hide the other photos.
+    const variants = normalizeVariants(product.variants);
+    variants.forEach(variant => {
+      if (Array.isArray(variant.images)) images.push(...variant.images);
+    });
 
-    return [...new Set(images.filter(Boolean))];
+    return [...new Set(images.filter(url => typeof url === "string" && url.trim()))];
   }
 
   function normalizeList(value, kind = "generic") {
@@ -426,13 +429,14 @@
     const sizes = state.sizes.length
       ? state.sizes
       : [...new Set(available.map(v => v.size).filter(Boolean))];
-    const allColors = state.colors.length
-      ? state.colors
-      : [...new Set(available.map(v => v.color).filter(Boolean))];
 
-    const colorsForSize = state.selectedSize
-      ? [...new Set(state.variants.filter(v => v.size === state.selectedSize).map(v => v.color).filter(Boolean))]
-      : allColors;
+    // Keep the complete product colour list visible after size selection.
+    // Merge admin-defined colours with colours found in variant inventory.
+    const allColors = [...new Map(
+      [...state.colors, ...state.variants.map(v => v.color)]
+        .filter(Boolean)
+        .map(color => [String(color).trim().toLowerCase(), String(color).trim()])
+    ).values()];
 
     const parts = [];
     if (sizes.length) {
@@ -441,7 +445,9 @@
           <label class="variant-label">Select Size</label>
           <div class="variant-options size-options">
             ${sizes.map(size => {
-              const unavailable = state.variants.length && !available.some(v => v.size === size);
+              const unavailable = state.variants.length && !available.some(v =>
+                v.size === size && (!state.selectedColor || v.color === state.selectedColor)
+              );
               return `<button type="button" class="variant-option ${state.selectedSize === size ? "selected" : ""}" data-size="${escapeHTML(size)}" ${unavailable ? "disabled" : ""}>${escapeHTML(size)}</button>`;
             }).join("")}
           </div>
@@ -453,8 +459,11 @@
         <div class="variant-group">
           <label class="variant-label">Select Colour <span class="selected-colour-name">${escapeHTML(state.selectedColor || "")}</span></label>
           <div class="variant-options color-options">
-            ${colorsForSize.map(color => {
-              const unavailable = state.variants.length && !available.some(v => v.color === color && (!state.selectedSize || v.size === state.selectedSize));
+            ${allColors.map(color => {
+              // A colour stays visible regardless of the currently selected
+              // size; it is disabled only if that colour has no stock at all.
+              const unavailable = state.variants.length &&
+                !available.some(v => v.color.toLowerCase() === color.toLowerCase());
               const swatch = colorToCSS(color);
               return `<button type="button" class="variant-option color-option ${state.selectedColor === color ? "selected" : ""}" data-color="${escapeHTML(color)}" ${unavailable ? "disabled" : ""}><span class="colour-swatch" style="--swatch:${escapeHTML(swatch)}"></span><span>${escapeHTML(color)}</span></button>`;
             }).join("")}
@@ -465,41 +474,78 @@
     container.innerHTML = parts.join("");
     container.querySelectorAll("[data-size]").forEach(button => button.addEventListener("click", () => {
       state.selectedSize = button.dataset.size;
-      if (state.selectedColor && state.variants.length && !state.variants.some(v => v.size === state.selectedSize && v.color === state.selectedColor && v.stock > 0)) state.selectedColor = "";
       updateVariantUI();
     }));
     container.querySelectorAll("[data-color]").forEach(button => button.addEventListener("click", () => {
       state.selectedColor = button.dataset.color;
+      // If this colour is not stocked in the previously selected size, clear
+      // the size so the customer can choose a compatible size afterwards.
+      if (state.selectedSize && state.variants.length &&
+          !state.variants.some(v => v.size === state.selectedSize &&
+            v.color.toLowerCase() === state.selectedColor.toLowerCase() && Number(v.stock) > 0)) {
+        state.selectedSize = "";
+      }
       state.imageIndex = 0;
-      updateSelectedVariantImages();
       updateVariantUI();
     }));
+
     updateSelectedVariantImages();
     updateAvailability();
   }
 
   function colorToCSS(value) {
-    const key = String(value || "").toLowerCase().replace(/[^a-z]/g, "");
-    const known = { black:"#171717", white:"#ffffff", red:"#d62828", navy:"#172b57", navyblue:"#172b57", maroon:"#701b35", pink:"#efa4bd", green:"#28734b", olive:"#78823c", beige:"#d8c4a5", brown:"#795548", purple:"#754b91", grey:"#888888", gray:"#888888", yellow:"#f1c40f", orange:"#e67e22" };
-    return known[key] || "#b8aaa0";
+    const key = String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const known = {
+      black:"#171717", jetblack:"#111111", white:"#ffffff", ivory:"#fff7e6",
+      cream:"#f5ead8", offwhite:"#f8f4ec", red:"#d62828", cherryred:"#b5122b",
+      burgundy:"#800020", wine:"#722f37", maroon:"#701b35", navy:"#172b57",
+      navyblue:"#172b57", royalblue:"#3155a4", skyblue:"#87ceeb", iceblue:"#c7e2ed",
+      babyblue:"#b8d8e8", powderblue:"#b0d0e5", teal:"#168b8b", turquoise:"#40c4c4",
+      mint:"#b9dfcf", pistachio:"#c5d6a0", sage:"#9caf88", olive:"#78823c",
+      green:"#28734b", emerald:"#087f5b", bottlegreen:"#145a32", mehndi:"#777d32",
+      pink:"#efa4bd", babypink:"#f4c2cf", blush:"#e8b7b2", hotpink:"#e75480",
+      rose:"#d98c9b", peach:"#f6c5a5", coral:"#f08080", lavender:"#b9a3d6",
+      lilac:"#c8a2c8", purple:"#754b91", plum:"#673147", mauve:"#b7849b",
+      beige:"#d8c4a5", taupe:"#b8a99a", nude:"#d8b69c", camel:"#c19a6b",
+      brown:"#795548", chocolate:"#5d4037", coffee:"#6f4e37", grey:"#888888",
+      gray:"#888888", silver:"#c0c0c0", charcoal:"#454545", yellow:"#f1c40f",
+      mustard:"#d4a017", gold:"#c9a227", orange:"#e67e22", rust:"#b7410e"
+    };
+    if (known[key]) return known[key];
+    if (/^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(value).trim())) return String(value).trim();
+    if (key.includes("blue")) return "#7faac8";
+    if (key.includes("green")) return "#6d966e";
+    if (key.includes("pink")) return "#e9b2c2";
+    if (key.includes("brown")) return "#8b6955";
+    if (key.includes("grey") || key.includes("gray")) return "#888888";
+    if (key.includes("purple") || key.includes("lilac")) return "#a88ab8";
+    if (key.includes("red") || key.includes("maroon")) return "#9b344b";
+    return "#b8aaa0";
   }
 
   function updateSelectedVariantImages() {
     if (!state.product) return;
-    const match = state.variants.find(v =>
-      v.size === state.selectedSize && v.color === state.selectedColor
-    );
-    const sameColour = state.variants.find(v =>
-      v.color.toLowerCase() === String(state.selectedColor || "").toLowerCase() &&
-      Array.isArray(v.images) && v.images.length
-    );
-    const chosen = match && match.images && match.images.length
-      ? match.images
-      : sameColour && sameColour.images.length
-        ? sameColour.images
-        : getProductImages(state.product);
-    state.images = chosen;
-    state.imageIndex = Math.min(state.imageIndex, Math.max(0, chosen.length - 1));
+
+    const fullGallery = getProductImages(state.product);
+    const selectedColor = String(state.selectedColor || "").toLowerCase();
+    let selectedColourImages = [];
+
+    if (selectedColor) {
+      const matchingVariants = state.variants.filter(v =>
+        String(v.color || "").toLowerCase() === selectedColor &&
+        Array.isArray(v.images) && v.images.length
+      );
+      const exactVariant = matchingVariants.find(v =>
+        !state.selectedSize || v.size === state.selectedSize
+      );
+      const chosenVariant = exactVariant || matchingVariants[0];
+      if (chosenVariant) selectedColourImages = chosenVariant.images;
+    }
+
+    // Put the selected shade's photo first (so it becomes the main image),
+    // while retaining every original and variant photo in the thumbnail rail.
+    state.images = [...new Set([...selectedColourImages, ...fullGallery])];
+    state.imageIndex = 0;
     renderImages();
   }
 
@@ -739,7 +785,11 @@
     state.sizes = normalizeList(product.sizes, "sizes");
     state.colors = normalizeList(product.colors, "colors");
     if (!state.sizes.length) state.sizes = [...new Set(state.variants.map(v => v.size).filter(Boolean))];
-    if (!state.colors.length) state.colors = [...new Set(state.variants.map(v => v.color).filter(Boolean))];
+    state.colors = [...new Map(
+      [...state.colors, ...state.variants.map(v => v.color)]
+        .filter(Boolean)
+        .map(color => [String(color).trim().toLowerCase(), String(color).trim()])
+    ).values()];
     state.selectedSize = "";
     state.selectedColor = "";
     state.quantity = 1;
