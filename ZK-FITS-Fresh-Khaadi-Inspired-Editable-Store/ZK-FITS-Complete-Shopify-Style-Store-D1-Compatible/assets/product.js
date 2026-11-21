@@ -67,19 +67,21 @@
     return sale > 0 && sale < regular ? sale : regular;
   }
 
-  function getProductImages(product) {
+  function getBaseProductImages(product) {
     const images = [];
     const extraImages = parseJSON(product.images, []);
     if (Array.isArray(extraImages)) images.push(...extraImages);
     if (product.image) images.unshift(product.image);
+    return [...new Set(images.filter(url => typeof url === "string" && url.trim()))];
+  }
 
-    // Include every variant photograph in the full gallery. Selecting a
-    // colour may reorder this list, but must never hide the other photos.
+  function getProductImages(product) {
+    const images = getBaseProductImages(product);
+    // Variant photos remain available to the product card/gallery utilities.
     const variants = normalizeVariants(product.variants);
     variants.forEach(variant => {
       if (Array.isArray(variant.images)) images.push(...variant.images);
     });
-
     return [...new Set(images.filter(url => typeof url === "string" && url.trim()))];
   }
 
@@ -526,13 +528,16 @@
   function updateSelectedVariantImages() {
     if (!state.product) return;
 
-    const fullGallery = getProductImages(state.product);
-    const selectedColor = String(state.selectedColor || "").toLowerCase();
+    // The detail-page gallery is the main product's own photo set.
+    // Colour-specific photos are placed first only while that colour is
+    // selected; the main product photos always remain in the thumbnail rail.
+    const mainProductGallery = getBaseProductImages(state.product);
+    const selectedColor = String(state.selectedColor || "").trim().toLowerCase();
     let selectedColourImages = [];
 
     if (selectedColor) {
       const matchingVariants = state.variants.filter(v =>
-        String(v.color || "").toLowerCase() === selectedColor &&
+        String(v.color || "").trim().toLowerCase() === selectedColor &&
         Array.isArray(v.images) && v.images.length
       );
       const exactVariant = matchingVariants.find(v =>
@@ -542,9 +547,7 @@
       if (chosenVariant) selectedColourImages = chosenVariant.images;
     }
 
-    // Put the selected shade's photo first (so it becomes the main image),
-    // while retaining every original and variant photo in the thumbnail rail.
-    state.images = [...new Set([...selectedColourImages, ...fullGallery])];
+    state.images = [...new Set([...selectedColourImages, ...mainProductGallery])];
     state.imageIndex = 0;
     renderImages();
   }
@@ -779,7 +782,7 @@
 
   function renderProduct(product) {
     state.product = product;
-    state.images = getProductImages(product);
+    state.images = getBaseProductImages(product);
     state.imageIndex = 0;
     state.variants = normalizeVariants(product.variants);
     state.sizes = normalizeList(product.sizes, "sizes");
