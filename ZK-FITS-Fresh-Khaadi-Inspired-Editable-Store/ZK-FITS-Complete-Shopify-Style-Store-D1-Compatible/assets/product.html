@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f8f6f2">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+  <meta name="description" content="Explore elegant Pakistani Eastern wear at ZK FITSS. View product details, available styles and collections.">
+  <title>Shop Pakistani Eastern Wear | ZK FITSS</title>
+  <link rel="canonical" href="https://www.zkfitss.com/product.html">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta property="og:type" content="product">
+  <meta property="og:site_name" content="ZK FITSS">
+  <meta property="og:title" content="Shop Pakistani Eastern Wear | ZK FITSS">
+  <meta property="og:description" content="Explore elegant Pakistani Eastern wear at ZK FITSS.">
+  <meta property="og:url" content="https://www.zkfitss.com/product.html">
+  <meta property="og:image" content="https://www.zkfitss.com/og-image.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Shop Pakistani Eastern Wear | ZK FITSS">
+  <meta name="twitter:description" content="Explore elegant Pakistani Eastern wear at ZK FITSS.">
+  <meta name="twitter:image" content="https://www.zkfitss.com/og-image.jpg">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/store.css">
+  <link rel="stylesheet" href="/assets/product.css?v=20261119-galleryfix2">
+  <script src="/assets/analytics.js" defer></script>
+  <script src="/assets/marketing-config.js" defer></script>
+  <script src="/assets/marketing-pixels.js" defer></script>
+  <script src="/assets/store.js" defer></script>
+  <script src="/assets/product.js?v=20261119-galleryfix2" defer></script>
+</head>
+
+<body class="product-page">
+
+  <!-- ANNOUNCEMENT BAR -->
+  <div class="announcement-bar" id="announcementBar">
+    <p id="announcementText">Welcome to ZK FITSS</p>
+  </div>
+
+  <!-- HEADER -->
+  <header class="site-header" id="siteHeader">
+    <div class="header-inner">
+
+      <button class="menu-toggle" id="menuToggle" type="button"
+        aria-label="Open menu" aria-expanded="false">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
+      <a class="brand-logo" href="/" aria-label="ZK FITSS home">
+        <img id="storeLogo" src="" alt="ZK FITSS" hidden>
+        <span id="storeName">ZK FITSS</span>
+      </a>
+
+      <nav class="main-nav" id="mainNav" aria-label="Main navigation">
+        <a href="/">Home</a>
+        <a href="/#women">Women</a>
+        <a href="/#girls">Girls</a>
+        <a href="/#collection">Collections</a>
+        <a href="/#featured">Featured</a>
+        <a href="/#contact">Contact</a>
+      </nav>
+
+      <div class="header-actions">
+        <button class="icon-button" id="cartButton" type="button"
+          aria-label="Open shopping bag">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 8h14l1 13H4L5 8Z"></path>
+            <path d="M9 9V6a3 3 0 0 1 6 0v3"></path>
+          </svg>
+          <span class="cart-count" id="cartCount">0</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- MOBILE MENU OVERLAY -->
+  <div class="menu-overlay" id="menuOverlay"></div>
+
+  <main class="product-main">
+    <div id="productLoading" class="product-loading">Loading product details...</div>
+    <div id="productError" class="product-error" hidden>
+      <h2>Product not available</h2>
+      <p>This product could not be found. Please return to the collection.</p>
+      <a class="button button-dark" href="/#products">Back to Shop</a>
+    </div>
+    <div id="productContent" hidden>
+
+    <!-- BREADCRUMB -->
+    <div class="product-breadcrumb">
+      <a href="/">Home</a>
+      <span>/</span>
+      <a href="/#products">Shop</a>
+      <span>/</span>
+      <span id="breadcrumbProduct">Product</span>
+    </div>
+
+    <!-- PRODUCT DETAILS -->
+    <section class="product-detail-section">
+
+      <div class="product-gallery">
+
+        <div class="product-main-image">
+          <button class="gallery-control gallery-prev" id="galleryPrev" type="button" aria-label="Previous product image">‹</button>
+          <img id="mainProductImage" src="" alt="Product image">
+          <button class="gallery-control gallery-next" id="galleryNext" type="button" aria-label="Next product image">›</button>
+        </div>
+
+        <div class="product-thumbnails" id="productThumbnails"></div>
+
+      </div>
+
+      <div class="product-information">
+
+        <span class="section-kicker" id="productCategory">ZK FITSS COLLECTION</span>
+
+        <h1 id="productTitle">Product Name</h1>
+
+        <div class="product-rating" id="productRating">
+          <span id="ratingStars">★★★★★</span>
+          <span id="ratingCount">(0 reviews)</span>
+        </div>
+
+        <div class="product-price">
+          <strong id="productPrice">Rs. 0</strong>
+          <del id="productComparePrice" hidden></del>
+          <span id="productDiscount" hidden></span>
+        </div>
+
+        <!-- SIZE AND COLOUR VARIANTS -->
+        <div class="product-options" id="productVariants"></div>
+        <p class="product-availability" id="productAvailability" aria-live="polite">Please select your size and colour.</p>
+        <span id="productSaleBadge" class="product-sale-badge" hidden>SALE</span>
+
+        <!-- QUANTITY -->
+        <div class="quantity-section">
+          <label for="productQuantity">Quantity</label>
+
+          <div class="quantity-control">
+            <button type="button" id="quantityMinus"
+              aria-label="Decrease quantity">−</button>
+
+            <input type="number" id="productQuantity"
+              value="1" min="1" max="99">
+
+            <button type="button" id="quantityPlus"
+              aria-label="Increase quantity">+</button>
+          </div>
+        </div>
+
+        <!-- ACTION BUTTONS -->
+        <div class="product-actions">
+
+          <button class="button button-dark button-full"
+            type="button" id="addToCartButton">
+            ADD TO CART
+          </button>
+
+          <button class="button button-light button-full"
+            type="button" id="buyNowButton">
+            BUY IT NOW
+          </button>
+
+        </div>
+
+        <div class="product-trust">
+          <div>
+            <span>✓</span>
+            <p>Quality Fashion</p>
+          </div>
+
+          <div>
+            <span>✓</span>
+            <p>Secure Shopping</p>
+          </div>
+
+          <div>
+            <span>✓</span>
+            <p>Customer Support</p>
+          </div>
+        </div>
+
+        <div class="product-description product-description-after-options" id="productDescription">
+          Discover this beautiful ZK FITSS design.
+        </div>
+
+        <!-- PRODUCT INFORMATION ACCORDIONS -->
+        <div class="product-accordions">
+
+          <details class="product-accordion" open>
+            <summary>Product Details</summary>
+            <div id="fullProductDetails">
+              Beautifully designed for your everyday and special occasions.
+            </div>
+          </details>
+
+          <details class="product-accordion">
+            <summary>Shipping Information</summary>
+            <div id="shippingInformation">
+              Delivery information will be confirmed during checkout.
+            </div>
+          </details>
+
+          <details class="product-accordion">
+            <summary>Payment Methods</summary>
+            <div id="paymentInformation">
+              Cash on Delivery, Bank Transfer, Easypaisa and JazzCash.
+            </div>
+          </details>
+
+          <details class="product-accordion">
+            <summary id="returnPolicyTitle">Returns & Exchanges</summary>
+            <div id="returnPolicyContent">Please contact ZK FITSS for return and exchange information.</div>
+          </details>
+
+        </div>
+
+        <div class="product-share">
+          <button type="button" id="shareProductButton">
+            Share Product
+          </button>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- CUSTOMER REVIEWS -->
+    <section class="reviews-section" id="reviews">
+
+      <div class="section-heading">
+        <span class="section-kicker">CUSTOMER FEEDBACK</span>
+        <h2>Customer Reviews</h2>
+        <p>See what customers think about this product.</p>
+      </div>
+
+      <div class="reviews-summary">
+
+        <div class="reviews-average">
+          <strong id="reviewsAverage">0.0</strong>
+          <div id="reviewsStars">★★★★★</div>
+          <span id="reviewsTotal">0 reviews</span>
+        </div>
+
+      </div>
+
+      <div class="reviews-list" id="reviewsList">
+        <p>No reviews yet. Be the first to review this product.</p>
+      </div>
+
+      <div class="review-form-section">
+        <h3>Write a Review</h3>
+
+        <form id="reviewForm">
+
+          <label for="reviewName">Your Name</label>
+          <input type="text" id="reviewName"
+            name="name" required placeholder="Enter your name">
+
+          <label for="reviewEmail">Email Address</label>
+          <input type="email" id="reviewEmail"
+            name="email" required placeholder="Enter your email">
+
+          <label for="reviewRating">Your Rating</label>
+          <select id="reviewRating" name="rating" required>
+            <option value="">Select rating</option>
+            <option value="5">★★★★★ - Excellent</option>
+            <option value="4">★★★★ - Very Good</option>
+            <option value="3">★★★ - Good</option>
+            <option value="2">★★ - Fair</option>
+            <option value="1">★ - Poor</option>
+          </select>
+
+          <label for="reviewText">Your Review</label>
+          <textarea id="reviewText" name="review"
+            rows="4" required placeholder="Share your experience"></textarea>
+
+          <p id="reviewFormMessage" role="status"></p>
+
+          <button type="submit" class="button button-dark"
+            id="submitReviewButton">
+            SUBMIT REVIEW
+          </button>
+
+        </form>
+      </div>
+
+    </section>
+
+    <!-- RELATED PRODUCTS -->
+    <section class="related-products-section" id="relatedProductsSection">
+      <div class="section-heading">
+        <span class="section-kicker">YOU MAY ALSO LIKE</span>
+        <h2>Explore More Styles</h2>
+      </div>
+
+      <div class="product-grid" id="relatedProducts"></div>
+    </section>
+    </div><!-- /#productContent -->
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="site-footer" id="siteFooter">
+
+    <div class="footer-main">
+
+      <div class="footer-about">
+        <a class="footer-brand" href="/">ZK FITSS</a>
+
+        <p id="footerText">
+          Discover elegant Pakistani fashion for women and girls.
+        </p>
+
+        <div class="social-links" id="socialLinks">
+
+          <a id="socialInstagram" href="#" target="_blank"
+            rel="noopener" aria-label="Instagram" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="3" width="18" height="18" rx="5"></rect>
+              <circle cx="12" cy="12" r="4"></circle>
+              <circle cx="18" cy="6" r="1" class="filled"></circle>
+            </svg>
+          </a>
+
+          <a id="socialFacebook" href="#" target="_blank"
+            rel="noopener" aria-label="Facebook" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M14 8h4V3h-4c-4 0-6 2-6 6v3H5v5h3v4h5v-4h4l1-5h-5V9c0-1 0-1 1-1Z"></path>
+            </svg>
+          </a>
+
+          <a id="socialTikTok" href="#" target="_blank"
+            rel="noopener" aria-label="TikTok" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M14 3v11a4 4 0 1 1-4-4"></path>
+              <path d="M14 3c1 3 3 5 6 5"></path>
+            </svg>
+          </a>
+
+          <a id="socialWhatsApp" href="#" target="_blank"
+            rel="noopener" aria-label="WhatsApp" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20 11.5a8 8 0 0 1-12 7l-4 1 1-4a8 8 0 1 1 15-4Z"></path>
+              <path d="M9 8c.5 2 2 4 4 5l2-1"></path>
+            </svg>
+          </a>
+
+        </div>
+      </div>
+
+      <div class="footer-column">
+        <h3>INFORMATION</h3>
+        <nav id="footerMenu">
+          <a href="/#contact">Contact Us</a>
+          <a href="/#products">Shop</a>
+          <a href="/return-policy.html">Return Policy</a>
+        </nav>
+      </div>
+
+      <div class="footer-column">
+        <h3>SHOPPING</h3>
+        <nav>
+          <a href="/#women">Women</a>
+          <a href="/#girls">Girls</a>
+          <a href="/#collection">Collections</a>
+        </nav>
+      </div>
+
+      <div class="footer-column">
+        <h3>CONTACT</h3>
+        <p id="footerPhone">Customer Support</p>
+        <p id="footerEmail"></p>
+        <p id="footerAddress"></p>
+      </div>
+
+    </div>
+
+    <div class="footer-bottom">
+      <p class="copyright-centered">© <span id="currentYear"></span> ZK FITSS. <span id="copyrightText">All Rights Reserved</span></p>
+      <p>Elegance in Every Stitch.</p>
+    </div>
+
+  </footer>
+
+  <!-- CART DRAWER -->
+  <div class="drawer-overlay" id="drawerOverlay"></div>
+
+  <aside class="cart-drawer" id="cart" aria-label="Shopping cart"
+    aria-hidden="true">
+
+    <div class="drawer-header">
+      <div>
+        <span class="section-kicker">YOUR SELECTION</span>
+        <h2>Your Shopping Bag</h2>
+      </div>
+
+      <button class="close-button" id="closeCart"
+        type="button" aria-label="Close cart">×</button>
+    </div>
+
+    <div class="cart-items" id="cartItems">
+      <div class="empty-cart">
+        <p>Your shopping bag is empty.</p>
+      </div>
+    </div>
+
+    <div class="cart-footer">
+      <div class="cart-subtotal">
+        <span>Subtotal</span>
+        <strong id="cartSubtotal">Rs. 0</strong>
+      </div>
+
+      <p class="cart-small-note">
+        Shipping charges are calculated at checkout.
+      </p>
+
+      <button class="button button-dark button-full"
+        id="checkoutButton" type="button" disabled>
+        PROCEED TO CHECKOUT
+      </button>
+    </div>
+
+  </aside>
+
+  <!-- CHECKOUT MODAL -->
+  <div class="modal-overlay" id="checkoutModal" aria-hidden="true">
+
+    <div class="modal-card checkout-card" role="dialog"
+      aria-modal="true" aria-labelledby="checkoutTitle">
+
+      <button class="close-button modal-close" id="closeCheckout"
+        type="button" aria-label="Close">×</button>
+
+      <div class="checkout-header">
+        <span class="section-kicker">ALMOST YOURS</span>
+        <h2 id="checkoutTitle">Complete Your Order</h2>
+        <p>Please enter your details to place your order.</p>
+      </div>
+
+      <form id="checkoutForm">
+
+        <div class="checkout-fields">
+
+          <label>
+            Full Name *
+            <input type="text" name="customer_name"
+              required autocomplete="name" placeholder="Your full name">
+          </label>
+
+          <label>
+            Email Address *
+            <input type="email" name="customer_email"
+              required autocomplete="email" placeholder="you@example.com">
+          </label>
+
+          <label>
+            Phone Number *
+            <input type="tel" name="phone"
+              required autocomplete="tel" placeholder="03XXXXXXXXX">
+          </label>
+
+          <label>
+            Complete Delivery Address *
+            <textarea name="address" rows="3"
+              required autocomplete="street-address"
+              placeholder="House, street, area, city"></textarea>
+          </label>
+
+          <label>
+            Payment Method *
+            <select name="payment_method" id="paymentMethod" required>
+              <option value="">Select payment method</option>
+              <option value="Cash on Delivery">Cash on Delivery</option>
+              <option value="Bank Transfer">Bank Transfer</option>
+              <option value="Easypaisa">Easypaisa</option>
+              <option value="JazzCash">JazzCash</option>
+            </select>
+          </label>
+          <p id="paymentInstructions" class="payment-instructions" hidden></p>
+
+        </div>
+
+        <div class="checkout-summary">
+          <h3>Order Summary</h3>
+
+          <div id="checkoutItems"></div>
+
+          <div class="summary-line">
+            <span>Subtotal</span>
+            <strong id="checkoutSubtotal">Rs. 0</strong>
+          </div>
+
+          <div class="summary-line">
+            <span>Shipping</span>
+            <strong id="checkoutShipping">Calculated at checkout</strong>
+          </div>
+
+          <div class="summary-line summary-total">
+            <span>Total</span>
+            <strong id="checkoutTotal">Rs. 0</strong>
+          </div>
+        </div>
+
+        <p class="checkout-error" id="checkoutError" role="alert"></p>
+
+        <button class="button button-dark button-full"
+          id="placeOrderButton" type="submit">
+          PLACE ORDER
+        </button>
+
+      </form>
+
+    </div>
+  </div>
+
+  <!-- ORDER SUCCESS -->
+  <div class="modal-overlay" id="successModal" aria-hidden="true">
+
+    <div class="modal-card success-card" role="dialog"
+      aria-modal="true" aria-labelledby="successTitle">
+
+      <div class="success-icon">✓</div>
+
+      <span class="section-kicker">THANK YOU</span>
+
+      <h2 id="successTitle">Your Order Is Placed!</h2>
+
+      <p id="successMessage">
+        Thank you for shopping with ZK FITSS.
+      </p>
+
+      <p class="order-reference" id="successOrderReference"></p>
+
+      <button class="button button-dark button-full"
+        id="successContinue" type="button">
+        CONTINUE SHOPPING
+      </button>
+
+    </div>
+
+  </div>
+
+  <!-- TOAST -->
+  <div class="store-toast" id="storeToast"
+    role="status" aria-live="polite"></div>
+
+  <noscript>
+    <p>Please enable JavaScript to shop at ZK FITSS.</p>
+  </noscript>
+
+</body>
+</html>

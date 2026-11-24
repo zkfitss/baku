@@ -54,14 +54,14 @@ CREATE TABLE IF NOT EXISTS product_reviews (
 CREATE INDEX IF NOT EXISTS idx_product_reviews_product ON product_reviews(product_id);
 CREATE INDEX IF NOT EXISTS idx_product_reviews_status ON product_reviews(status);
 INSERT OR IGNORE INTO settings(key,value) VALUES
-('store_name','ZK FITS'),
+('store_name','ZK FITSS'),
 ('announcement','New season arrivals are here'),
 ('hero_title','Dress beautifully. Feel confident.'),
 ('hero_subtitle','Everyday elegance for women and girls.'),
 ('hero_image',''),
 ('hero_slides','[]'),
 ('logo',''),
-('footer_text','ZK FITS — Style made for you.'),
+('footer_text','ZK FITSS — Style made for you.'),
 ('instagram',''),
 ('whatsapp',''),
 ('facebook',''),

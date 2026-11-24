@@ -905,6 +905,17 @@ export async function onRequest({ request, env }) {
       });
     }
 
+    // PUBLIC BLOG: published posts only; optional slug returns one article
+    if (path[0] === "blog" && method === "GET" && url.searchParams.get("admin") !== "1") {
+      const slug = String(url.searchParams.get("slug") || "").trim();
+      if (slug) {
+        const post = await env.DB.prepare("SELECT id,title,slug,excerpt,content,cover_image,category,tags,seo_title,seo_description,published_at,created_at FROM blog_posts WHERE slug = ? AND status = 'published' LIMIT 1").bind(slug).first();
+        return post ? json({ post }) : json({ error: "Blog post not found." }, 404);
+      }
+      const result = await env.DB.prepare("SELECT id,title,slug,excerpt,cover_image,category,tags,published_at,created_at FROM blog_posts WHERE status = 'published' ORDER BY COALESCE(published_at,created_at) DESC").all();
+      return json({ posts: result.results || [] });
+    }
+
     // PUBLIC PRODUCT REVIEWS
     if (path[0] === "reviews" && !path[1] && method === "GET") {
       const productId = String(
@@ -996,6 +1007,47 @@ export async function onRequest({ request, env }) {
     // OTHER ROUTES REQUIRE ADMIN LOGIN
     if (!isAdmin(request, token)) {
       return json({ error: "Unauthorized." }, 401);
+    }
+
+    // ADMIN BLOG MANAGEMENT
+    if (path[0] === "blog" && method === "GET") {
+      const result = await env.DB.prepare("SELECT * FROM blog_posts ORDER BY created_at DESC").all();
+      return json({ posts: result.results || [] });
+    }
+    if (path[0] === "blog" && !path[1] && method === "POST") {
+      const data = await readBody(request);
+      const title = String(data.title || "").trim();
+      const slug = String(data.slug || title).toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,140);
+      const content = String(data.content || "").trim();
+      if (!title || !slug || !content) return json({ error: "Title, URL slug and article content are required." },400);
+      const id = crypto.randomUUID();
+      const status = data.status === "published" ? "published" : "draft";
+      const publishedAt = status === "published" ? new Date().toISOString() : null;
+      try {
+        await env.DB.prepare("INSERT INTO blog_posts (id,title,slug,excerpt,content,cover_image,category,tags,seo_title,seo_description,status,published_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+          .bind(id,title,slug,String(data.excerpt||""),content,String(data.cover_image||""),String(data.category||"Fashion"),String(data.tags||""),String(data.seo_title||title),String(data.seo_description||data.excerpt||""),status,publishedAt,new Date().toISOString(),new Date().toISOString()).run();
+      } catch(e) { if (String(e).includes("UNIQUE")) return json({error:"This URL slug is already in use."},409); throw e; }
+      return json({ok:true,id},201);
+    }
+    if (path[0] === "blog" && path[1] && method === "PUT") {
+      const data = await readBody(request);
+      const title = String(data.title || "").trim();
+      const slug = String(data.slug || title).toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,140);
+      const content = String(data.content || "").trim();
+      if (!title || !slug || !content) return json({ error: "Title, URL slug and article content are required." },400);
+      const old = await env.DB.prepare("SELECT id,status,published_at FROM blog_posts WHERE id=?").bind(path[1]).first();
+      if (!old) return json({error:"Blog post not found."},404);
+      const status = data.status === "published" ? "published" : "draft";
+      const publishedAt = status === "published" ? (old.published_at || new Date().toISOString()) : null;
+      try {
+        await env.DB.prepare("UPDATE blog_posts SET title=?,slug=?,excerpt=?,content=?,cover_image=?,category=?,tags=?,seo_title=?,seo_description=?,status=?,published_at=?,updated_at=? WHERE id=?")
+          .bind(title,slug,String(data.excerpt||""),content,String(data.cover_image||""),String(data.category||"Fashion"),String(data.tags||""),String(data.seo_title||title),String(data.seo_description||data.excerpt||""),status,publishedAt,new Date().toISOString(),path[1]).run();
+      } catch(e) { if (String(e).includes("UNIQUE")) return json({error:"This URL slug is already in use."},409); throw e; }
+      return json({ok:true});
+    }
+    if (path[0] === "blog" && path[1] && method === "DELETE") {
+      await env.DB.prepare("DELETE FROM blog_posts WHERE id=?").bind(path[1]).run();
+      return json({ok:true});
     }
 
     // ADMIN ANALYTICS REPORT

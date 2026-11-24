@@ -1,4 +1,4 @@
--- ZK FITS live D1 compatibility migration status (2026-11-18).
+-- ZK FITSS live D1 compatibility migration status (2026-11-18).
 -- The owner has already applied the only missing columns manually:
 --   products.collection
 --   products.images

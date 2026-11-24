@@ -126,3 +126,16 @@ The bridge loads IDs dynamically from the saved store settings and maps page vie
 - Google Ads purchase conversion requires both the `AW-...` ID and its conversion label. GA4 is not a substitute for Google Ads conversion setup.
 - Use clear privacy notice/consent practices appropriate to your business and customer locations. Do not send customer names, phone numbers, email, postal addresses or other direct identifiers to ad platforms.
 - After deployment, test one order using each platform's test/debug tools and compare the order in the admin panel. Avoid placing repeated real orders just for testing.
+
+
+## Blog CMS (added)
+
+A blog manager is available in the admin dashboard under **Blog Posts**. Create drafts or publish articles, set a featured image, category, tags, SEO title and meta description. Published articles appear at `/blog.html` and use `/blog.html?slug=your-post-slug` for individual article pages.
+
+Before deploying this update, apply the new D1 migration to the existing database:
+
+```bash
+npx wrangler d1 migrations apply zkfitss --remote
+```
+
+The migration file is `migrations/0007_blog.sql`. Deploy the complete updated project after the migration succeeds.

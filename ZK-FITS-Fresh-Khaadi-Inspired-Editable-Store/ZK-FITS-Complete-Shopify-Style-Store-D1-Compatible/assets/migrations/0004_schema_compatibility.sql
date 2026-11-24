@@ -1,0 +1,8 @@
+-- ZK FITSS live D1 compatibility migration status (2026-11-18).
+-- The owner has already applied the only missing columns manually:
+--   products.collection
+--   products.images
+-- The orders.customer_email and orders.created_at columns already existed.
+-- The created_at backfill has also completed successfully.
+-- This file is intentionally a no-op. Do not add ALTER TABLE statements here
+-- or run the old 0004 migration from an earlier ZIP against this database.

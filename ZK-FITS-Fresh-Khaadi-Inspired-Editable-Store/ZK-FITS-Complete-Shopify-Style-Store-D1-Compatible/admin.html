@@ -43,6 +43,7 @@
     <button class="active" data-tab="overview">Overview</button>
     <button data-tab="analytics">Analytics</button>
     <button data-tab="products">Products</button>
+    <button data-tab="blog">Blog Posts</button>
     <button data-tab="orders">Customer Orders</button>
     <button data-tab="settings">Store Customization</button>
 
@@ -102,6 +103,30 @@
         <div class="analytics-box"><h3>Monthly archive</h3><p class="analytics-note">Older detailed events are compacted into monthly totals. Monthly visitor counts are deduplicated by anonymous browser session.</p><div id="analyticsMonthly"><div class="analytics-empty">Loading monthly summaries…</div></div></div>
       </div>
       <p class="analytics-note">Location is approximate and based on Cloudflare network data. Analytics starts collecting after this version is deployed; historical visitor data cannot be reconstructed. Order attribution is captured at checkout when the customer’s browser retains its visit source. Detailed event retention is 90 days; monthly summaries and lightweight attribution are retained for long-term reporting.</p>
+    </section>
+
+    <!-- BLOG MANAGEMENT -->
+    <section class="panel" id="blog" hidden>
+      <div class="panel-head"><div><h2>Blog Posts</h2><p>Create SEO-friendly articles for the ZK FITSS website.</p></div><button class="primary" id="newBlogPost" type="button">+ NEW BLOG POST</button></div>
+      <div id="blogPostList"><p>Loading blog posts…</p></div>
+      <form id="blogPostForm" class="settings-form" hidden>
+        <h3 id="blogFormHeading">Create blog post</h3>
+        <input type="hidden" name="id">
+        <div class="settings-grid">
+          <label>Post title<input name="title" required maxlength="180"></label>
+          <label>URL slug<input name="slug" required maxlength="140" placeholder="style-tips-for-everyday"></label>
+          <label class="full-width">Short excerpt<textarea name="excerpt" rows="2" maxlength="300"></textarea></label>
+          <label>Category<input name="category" value="Fashion"></label>
+          <label>Tags<input name="tags" placeholder="fashion, styling, women"></label>
+          <label class="full-width">Featured image URL<input name="cover_image" placeholder="Upload an image below or paste image URL"></label>
+          <label class="full-width">Upload featured image<input id="blogCoverUpload" type="file" accept="image/*"></label>
+          <label class="full-width">Article content<textarea name="content" rows="14" required placeholder="Write your complete article here. Basic HTML is not required; use plain text and paragraphs."></textarea></label>
+          <label>SEO title<input name="seo_title" maxlength="180"></label>
+          <label>SEO meta description<textarea name="seo_description" rows="3" maxlength="300"></textarea></label>
+          <label>Publishing status<select name="status"><option value="draft">Save as draft</option><option value="published">Publish now</option></select></label>
+          <div class="actions full-width"><button class="primary" type="submit">SAVE BLOG POST</button><button class="secondary" id="cancelBlogEdit" type="button">CANCEL</button></div>
+        </div>
+      </form>
     </section>
 
     <!-- PRODUCTS -->

@@ -180,7 +180,8 @@
       orders: "Customer Orders",
       settings: "Store Customization",
       reviews: "Product Reviews",
-      analytics: "Store Analytics"
+      analytics: "Store Analytics",
+      blog: "Blog Posts"
     };
 
     if ($("#pageTitle")) {
@@ -193,6 +194,7 @@
     if (tab === "analytics") {
       loadAnalytics();
     }
+    if (tab === "blog") loadBlogPosts();
   }
 
   // ------------------------------------
@@ -1647,6 +1649,28 @@
       setLoading(button, false);
     }
   }
+
+  // ------------------------------------
+  // BLOG CMS
+  // ------------------------------------
+  let blogPosts = [];
+  async function loadBlogPosts() {
+    const target = $("#blogPostList"); if (!target) return;
+    try {
+      const data = await api("/blog?admin=1"); blogPosts = data.posts || [];
+      target.innerHTML = blogPosts.length ? `<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Title</th><th>Status</th><th>Category</th><th>Updated</th><th>Actions</th></tr></thead><tbody>${blogPosts.map(post => `<tr><td><strong>${escapeHTML(post.title)}</strong><br><small>/blog.html?slug=${encodeURIComponent(post.slug)}</small></td><td>${escapeHTML(post.status)}</td><td>${escapeHTML(post.category)}</td><td>${escapeHTML((post.updated_at||"").slice(0,10))}</td><td><button type="button" class="secondary" data-blog-edit="${escapeHTML(post.id)}">EDIT</button> <button type="button" class="secondary" data-blog-delete="${escapeHTML(post.id)}">DELETE</button></td></tr>`).join("")}</tbody></table></div>` : `<p>No blog posts yet. Create your first article.</p>`;
+    } catch(e) { target.innerHTML = `<p class="error">${escapeHTML(e.message)}</p>`; }
+  }
+  function resetBlogForm() { const form=$("#blogPostForm"); form.reset(); form.hidden=true; form.elements.id.value=""; }
+  $("#newBlogPost")?.addEventListener("click", () => { const f=$("#blogPostForm"); f.reset(); f.hidden=false; f.elements.id.value=""; $("#blogFormHeading").textContent="Create blog post"; f.scrollIntoView({behavior:"smooth",block:"start"}); });
+  $("#cancelBlogEdit")?.addEventListener("click", resetBlogForm);
+  $("#blogPostList")?.addEventListener("click", async e => {
+    const edit=e.target.closest("[data-blog-edit]"); const del=e.target.closest("[data-blog-delete]");
+    if(edit){ const post=blogPosts.find(x=>String(x.id)===edit.dataset.blogEdit); if(!post)return; const f=$("#blogPostForm"); for(const key of ["id","title","slug","excerpt","content","cover_image","category","tags","seo_title","seo_description","status"]) if(f.elements[key]) f.elements[key].value=post[key]||""; f.hidden=false; $("#blogFormHeading").textContent="Edit blog post"; f.scrollIntoView({behavior:"smooth",block:"start"}); }
+    if(del && confirm("Permanently delete this blog post?")){ try{await api("/blog/"+encodeURIComponent(del.dataset.blogDelete),{method:"DELETE"});notify("Blog post deleted.");loadBlogPosts();}catch(err){notify(err.message,true);} }
+  });
+  $("#blogCoverUpload")?.addEventListener("change", async e => { const file=e.target.files?.[0]; if(!file)return; const form=new FormData(); form.append("file",file); form.append("folder","blog"); try{const result=await api("/upload",{method:"POST",body:form}); $("#blogPostForm").elements.cover_image.value=result.url||result.image||result.location||""; if(!$("#blogPostForm").elements.cover_image.value) throw new Error("Upload completed but image URL was not returned. Paste the uploaded URL manually."); notify("Featured image uploaded.");}catch(err){notify(err.message,true);} });
+  $("#blogPostForm")?.addEventListener("submit", async e => { e.preventDefault(); const f=e.currentTarget; const data=Object.fromEntries(new FormData(f).entries()); const id=data.id; delete data.id; try{await api(id?"/blog/"+encodeURIComponent(id):"/blog",{method:id?"PUT":"POST",body:JSON.stringify(data)});notify(data.status==="published"?"Blog post published.":"Blog post saved as draft.");resetBlogForm();loadBlogPosts();}catch(err){notify(err.message,true);} });
 
   // ------------------------------------
   // START
